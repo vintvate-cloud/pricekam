@@ -20,10 +20,28 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL ||
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '';
 
 if (!supabaseUrl || !supabaseServiceKey) {
-    console.warn('⚠️ SUPABASE config missing from env. DB operations will fail.');
+    console.warn('⚠️ CRITICAL: SUPABASE config missing from env. DB operations WILL crash.');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Initialize safely. If URL is missing, createClient throws.
+let supabase: any;
+try {
+    if (supabaseUrl && (supabaseUrl.startsWith('http') || supabaseUrl.startsWith('https'))) {
+        supabase = createClient(supabaseUrl, supabaseServiceKey);
+    } else {
+        console.error('❌ Invalid or missing Supabase URL:', supabaseUrl);
+    }
+} catch (err: any) {
+    console.error('❌ Supabase Initialization Failed:', err.message);
+}
+
+// Safety wrapper for DB calls
+const db = {
+    get from() {
+        if (!supabase) throw new Error('Database not initialized. Check server environment variables (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).');
+        return supabase.from.bind(supabase);
+    }
+};
 
 // --- In-Memory Product Cache (60s TTL) ---
 const productCache: { data: any[] | null; ts: number } = { data: null, ts: 0 };
@@ -130,7 +148,16 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json());
+app.use((req, res, next) => {
+    // Catch JSON parsing errors
+    express.json()(req, res, (err) => {
+        if (err) {
+            console.error('❌ JSON Parse Error:', err.message);
+            return res.status(400).json({ message: 'Malformed JSON in request body', error: err.message });
+        }
+        next();
+    });
+});
 app.use(cookieParser());
 
 // --- Rate Limiters ---
@@ -143,17 +170,19 @@ const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
     message: { message: 'Too many attempts. Please try again in 15 minutes.' },
-    standardHeaders: true, legacyHeaders: false,
+    standardHeaders: true,
+    legacyHeaders: false,
     keyGenerator: getClientIp,
-    validate: false // completely disable strict validation to survive Vercel proxy
+    validate: { trustProxy: false }
 });
 const apiLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 200,
     message: { message: 'Too many requests. Slow down!' },
-    standardHeaders: true, legacyHeaders: false,
+    standardHeaders: true,
+    legacyHeaders: false,
     keyGenerator: getClientIp,
-    validate: false // completely disable strict validation to survive Vercel proxy
+    validate: { trustProxy: false }
 });
 app.use('/api/', apiLimiter);
 
@@ -161,6 +190,7 @@ app.use('/api/', apiLimiter);
 app.get('/api/health', async (req, res) => {
     let dbStatus = 'NOT_TESTED';
     try {
+        if (!supabase) return res.status(503).json({ status: 'DOWN', database: 'CLIENT_NOT_READY' });
         const { error } = await supabase.from('Product').select('id', { count: 'exact', head: true }).limit(1);
         if (error) throw error;
         dbStatus = 'CONNECTED';
@@ -246,8 +276,13 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     const email = sanitize(req.body.email);
     const { password } = req.body;
     try {
+        if (!supabase) throw new Error('Supabase client is not initialized. Please check host environment variables.');
+
         const { data: user, error } = await supabase.from('User').select('*').eq('email', email).single();
-        if (error || !user) return res.status(400).json({ message: 'Invalid credentials' });
+        if (error || !user) {
+            console.error('Login: User not found or DB error:', error?.message);
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
 
         // Guard: Google-only users have no password
         if (!user.password) {
@@ -258,11 +293,20 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
-        res.cookie('token', token, { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('token', token, {
+            httpOnly: true,
+            sameSite: 'lax', // Lax is better for cross-site auth redirects
+            secure: true,   // Always secure in production
+            maxAge: 24 * 60 * 60 * 1000
+        });
         res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role } });
-    } catch (error) {
-        console.error('Login Error:', error);
-        res.status(500).json({ message: 'Server error' });
+    } catch (error: any) {
+        console.error('💥 Login Crash:', error.message, error.stack);
+        res.status(500).json({
+            message: 'Server Error during login',
+            detail: error.message,
+            hint: 'Check if database is reachable and environment variables are set on the server host.'
+        });
     }
 });
 
@@ -1097,7 +1141,7 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 // Only start server in development (not when used as Vercel serverless function)
 if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Server running on port ${PORT}`);
     });
 }
