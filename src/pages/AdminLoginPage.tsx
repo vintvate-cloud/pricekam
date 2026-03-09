@@ -35,6 +35,9 @@ const AdminLoginPage = () => {
         setError("");
 
         try {
+            // ADMIN logic: Try local server auth only. 
+            // Do NOT try Supabase auth here as admin accounts reside in the local database.
+            // This prevents the console '400 Bad Request' from appearing.
             const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

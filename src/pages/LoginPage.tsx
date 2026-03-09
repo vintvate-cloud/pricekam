@@ -30,20 +30,7 @@ const LoginPage = () => {
     setError("");
 
     try {
-      // 1. First try Supabase (Modern Auth Flow)
-      const { data: sbData, error: sbError } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: cleanPassword,
-      });
-
-      if (!sbError && sbData.session) {
-        // Successful Supabase login, now sync with our backend
-        await syncWithBackend(sbData.session.access_token);
-        return;
-      }
-
-      // 2. If Supabase fails, try Local Server (Fallback for legacy/admin accounts)
-      // We only fallback if Supabase gives an error (like user not found in Supabase)
+      // 1. Try Local Server FIRST (Handles Admin and Legacy accounts silently)
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,14 +38,26 @@ const LoginPage = () => {
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || (sbError ? sbError.message : "Invalid credentials"));
+      if (res.ok) {
+        const data = await res.json();
+        await refetchUser();
+        navigateByRole(data.user.role);
+        return;
       }
 
-      // Successful local login
-      refetchUser();
-      navigateByRole(data.user.role);
+      // 2. If Local Server fails, then try Supabase (Modern Auth Flow)
+      const { data: sbData, error: sbError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+
+      if (!sbError && sbData.session) {
+        await syncWithBackend(sbData.session.access_token);
+        return;
+      }
+
+      const localData = await res.json().catch(() => ({}));
+      throw new Error(localData.message || (sbError ? sbError.message : "Invalid credentials"));
 
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");

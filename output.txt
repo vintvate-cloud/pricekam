@@ -1,0 +1,3 @@
+[dotenv@17.3.1] injecting env (15) from .env -- tip: ΓÜÖ∩╕Å  load multiple .env files with { path: ['.env.local', '.env'] }
+Checking if admin@joyfulcart.com exists in Supabase Auth...
+Γ¥î User NOT found in Supabase Auth. Falling back to local DB is EXPECTED.
