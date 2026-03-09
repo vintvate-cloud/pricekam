@@ -126,24 +126,29 @@ const authorizeRoles = (roles: string[]) => {
 app.use(cors({
     origin: (origin, callback) => {
         const allowed = [
-            undefined, null,          // server-to-server / Vite proxy
+            undefined, null,
             'http://localhost:5173',
             'http://localhost:3000',
             'http://127.0.0.1:5173',
-            process.env.VITE_FRONTEND_URL,  // e.g. https://pricekam.vercel.app
+            'http://localhost:8080',
+            process.env.VITE_FRONTEND_URL,
+            'https://www.pricekam.com',
+            'https://pricekam.com'
         ];
         if (
             !origin ||
             allowed.includes(origin) ||
             origin.includes('localhost') ||
             origin.includes('127.0.0.1') ||
+            origin.includes('pricekam.com') ||
             origin.includes('vercel.app') ||
             origin.includes('ngrok-free.app') ||
             origin.includes('ngrok.io')
         ) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            console.warn('❌ CORS Blocked:', origin);
+            callback(new Error(`Not allowed by CORS: ${origin}`));
         }
     },
     credentials: true
@@ -168,21 +173,19 @@ const getClientIp = (req: any) => {
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 20, // Increased for stability
     message: { message: 'Too many attempts. Please try again in 15 minutes.' },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: getClientIp,
-    validate: { trustProxy: false }
+    keyGenerator: getClientIp
 });
 const apiLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 200,
+    max: 300,
     message: { message: 'Too many requests. Slow down!' },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: getClientIp,
-    validate: { trustProxy: false }
+    keyGenerator: getClientIp
 });
 app.use('/api/', apiLimiter);
 
@@ -207,8 +210,20 @@ app.get('/api/health', async (req, res) => {
         database: dbStatus,
         maskedUrl,
         timestamp: new Date().toISOString(),
-        env: process.env.NODE_ENV
+        env: process.env.NODE_ENV,
+        node: process.version
     });
+});
+
+app.get('/api/test-db', async (req, res) => {
+    try {
+        if (!supabase) throw new Error('Supabase client not initialized');
+        const { data, error } = await db.from('User').select('id').limit(1);
+        if (error) throw error;
+        res.json({ success: true, message: 'Database connection verified', data });
+    } catch (err: any) {
+        res.status(500).json({ success: false, error: err.message, hint: 'Verify SUPABASE_URL and Service Role key in host dashboard.' });
+    }
 });
 
 // --- DELIVERY CHARGE LOGIC ---
