@@ -17,7 +17,7 @@ import rateLimit from 'express-rate-limit';
 
 // --- Supabase Setup ---
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
 
 if (!supabaseUrl || !supabaseServiceKey) {
     console.warn('⚠️ CRITICAL: SUPABASE config missing from env. DB operations WILL crash.');
@@ -191,7 +191,7 @@ app.get('/api/health', async (req, res) => {
     let dbStatus = 'NOT_TESTED';
     try {
         if (!supabase) return res.status(503).json({ status: 'DOWN', database: 'CLIENT_NOT_READY' });
-        const { error } = await supabase.from('Product').select('id', { count: 'exact', head: true }).limit(1);
+        const { error } = await db.from('Product').select('id', { count: 'exact', head: true }).limit(1);
         if (error) throw error;
         dbStatus = 'CONNECTED';
     } catch (err: any) {
@@ -231,7 +231,7 @@ app.get('/api/auth/me', async (req, res) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-        const { data: user, error } = await supabase.from('User').select('*').eq('id', decoded.id).single();
+        const { data: user, error } = await db.from('User').select('*').eq('id', decoded.id).single();
 
         if (error || !user) {
             res.clearCookie('token');
@@ -250,11 +250,11 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     const name = sanitize(req.body.name);
     const { password } = req.body;
     try {
-        const { data: existingUser } = await supabase.from('User').select('id').eq('email', email).single();
+        const { data: existingUser } = await db.from('User').select('id').eq('email', email).single();
         if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const { data: user, error } = await supabase.from('User').insert({
+        const { data: user, error } = await db.from('User').insert({
             email,
             password: hashedPassword,
             name
@@ -278,7 +278,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         if (!supabase) throw new Error('Supabase client is not initialized. Please check host environment variables.');
 
-        const { data: user, error } = await supabase.from('User').select('*').eq('email', email).single();
+        const { data: user, error } = await db.from('User').select('*').eq('email', email).single();
         if (error || !user) {
             console.error('Login: User not found or DB error:', error?.message);
             return res.status(400).json({ message: 'Invalid credentials' });
@@ -315,18 +315,17 @@ app.post('/api/auth/supabase', async (req, res) => {
     const { access_token, password } = req.body;
     if (!access_token) return res.status(400).json({ message: 'Missing access_token' });
 
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-    if (!supabaseUrl || !serviceRoleKey || serviceRoleKey.includes('your_')) {
-        return res.status(503).json({ message: 'Supabase not configured on server' });
+    if (!url || !key || key.includes('your_')) {
+        console.error('❌ Supabase Auth Sink: Missing credentials');
+        return res.status(503).json({ message: 'Supabase not configured on server hosts' });
     }
 
     try {
-        // 1. Verify token with Supabase
-        const { createClient } = await import('@supabase/supabase-js');
-        const adminClient = createClient(supabaseUrl, serviceRoleKey);
-        const { data: { user: sbUser }, error: sbError } = await adminClient.auth.getUser(access_token);
+        // 1. Verify token with Supabase - Using the same client logic
+        const { data: { user: sbUser }, error: sbError } = await createClient(url, key).auth.getUser(access_token);
 
         if (sbError || !sbUser) {
             console.error('[Google Auth] Token verification failed:', sbError?.message);
@@ -350,7 +349,7 @@ app.post('/api/auth/supabase', async (req, res) => {
 
         // 3. Find existing user by googleId OR email only (avoid UUID/CUID id mismatch)
         const orConditions = googleId ? `email.eq.${email},googleId.eq.${googleId}` : `email.eq.${email}`;
-        let { data: user } = await supabase.from('User')
+        let { data: user } = await db.from('User')
             .select('*')
             .or(orConditions)
             .maybeSingle();
@@ -359,7 +358,7 @@ app.post('/api/auth/supabase', async (req, res) => {
 
         if (user) {
             // Update existing user — link googleId if missing, fill name if missing
-            const { data: updatedUser, error: updateError } = await supabase.from('User')
+            const { data: updatedUser, error: updateError } = await db.from('User')
                 .update({
                     ...(googleId && !user.googleId ? { googleId } : {}),
                     ...(!user.name && name ? { name } : {}),
@@ -373,7 +372,7 @@ app.post('/api/auth/supabase', async (req, res) => {
             user = updatedUser;
         } else {
             // Create brand new user
-            const { data: newUser, error: createError } = await supabase.from('User')
+            const { data: newUser, error: createError } = await db.from('User')
                 .insert({
                     email,
                     name: name || 'Pricekam User',
@@ -414,7 +413,7 @@ app.post('/api/auth/set-password', authenticateToken, async (req: any, res) => {
     }
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
-        const { error } = await supabase.from('User')
+        const { error } = await db.from('User')
             .update({ password: hashedPassword })
             .eq('id', req.user.id);
 
@@ -456,7 +455,7 @@ app.post('/api/payment/create-order', authenticateToken, async (req: any, res) =
     try {
         // Fetch REAL prices from database — never trust client-supplied prices
         const productIds = items.map((i: any) => i.productId);
-        const { data: products, error } = await supabase.from('Product')
+        const { data: products, error } = await db.from('Product')
             .select('id, price, stock, title')
             .in('id', productIds);
 
@@ -563,7 +562,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
         }
 
         // 2. Duplicate payment guard — prevent same payment creating 2 orders
-        const { data: existingOrder } = await supabase.from('Order')
+        const { data: existingOrder } = await db.from('Order')
             .select('id')
             .eq('razorpayPaymentId', razorpay_payment_id)
             .maybeSingle();
@@ -573,7 +572,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
         }
 
         // 3. Get user for email
-        const { data: user } = await supabase.from('User')
+        const { data: user } = await db.from('User')
             .select('email')
             .eq('id', req.user.id)
             .single();
@@ -582,7 +581,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 
         // 4. Re-fetch REAL prices from DB — never trust client-supplied prices
         const productIds = items.map((i: any) => i.productId);
-        const { data: products, error: pError } = await supabase.from('Product')
+        const { data: products, error: pError } = await db.from('Product')
             .select('id, price, stock, title')
             .in('id', productIds);
 
@@ -626,7 +625,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 
         // 8. Create order in DB + decrement stock (Manually handling since client doesn't support transactions easily)
         // First, create the order
-        const { data: order, error: orderError } = await supabase.from('Order').insert({
+        const { data: order, error: orderError } = await db.from('Order').insert({
             userId: req.user.id,
             total: orderTotal,
             status: 'PENDING',
@@ -646,7 +645,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
         if (orderError || !order) throw orderError || new Error('Failed to create order');
 
         // Second, create order items
-        const { error: itemsError } = await supabase.from('OrderItem').insert(
+        const { error: itemsError } = await db.from('OrderItem').insert(
             verifiedItems.map(item => ({
                 orderId: order.id,
                 productId: item.productId,
@@ -661,14 +660,14 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
         for (const item of verifiedItems) {
             const product = products.find(p => p.id === item.productId);
             if (product) {
-                await supabase.from('Product')
+                await db.from('Product')
                     .update({ stock: product.stock - item.quantity })
                     .eq('id', item.productId);
             }
         }
 
         // Fetch full order for response (with nested items)
-        const { data: fullOrder } = await supabase.from('Order')
+        const { data: fullOrder } = await db.from('Order')
             .select('*, items:OrderItem(*, product:Product(*))')
             .eq('id', order.id)
             .single();
@@ -699,7 +698,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 app.post('/api/orders', authenticateToken, async (req: any, res) => {
     const { total, items, customerAddress, paymentMethod } = req.body;
     try {
-        const { data: order, error: orderError } = await supabase.from('Order').insert({
+        const { data: order, error: orderError } = await db.from('Order').insert({
             userId: req.user.id,
             total: parseFloat(total),
             status: 'PENDING',
@@ -714,7 +713,7 @@ app.post('/api/orders', authenticateToken, async (req: any, res) => {
 
         if (orderError || !order) throw orderError || new Error('Failed to create order');
 
-        const { error: itemsError } = await supabase.from('OrderItem').insert(
+        const { error: itemsError } = await db.from('OrderItem').insert(
             items.map((item: any) => ({
                 orderId: order.id,
                 productId: item.productId,
@@ -725,7 +724,7 @@ app.post('/api/orders', authenticateToken, async (req: any, res) => {
 
         if (itemsError) throw itemsError;
 
-        const { data: fullOrder } = await supabase.from('Order')
+        const { data: fullOrder } = await db.from('Order')
             .select('*, items:OrderItem(*, product:Product(*))')
             .eq('id', order.id)
             .single();
@@ -740,7 +739,7 @@ app.post('/api/orders', authenticateToken, async (req: any, res) => {
 // Get user's orders
 app.get('/api/orders', authenticateToken, async (req: any, res) => {
     try {
-        const { data: orders, error } = await supabase.from('Order')
+        const { data: orders, error } = await db.from('Order')
             .select('*, items:OrderItem(*, product:Product(*))')
             .eq('userId', req.user.id)
             .order('createdAt', { ascending: false });
@@ -755,7 +754,7 @@ app.get('/api/orders', authenticateToken, async (req: any, res) => {
 // Cancel order (PENDING only)
 app.post('/api/orders/:id/cancel', authenticateToken, async (req: any, res) => {
     try {
-        const { data: order, error } = await supabase.from('Order')
+        const { data: order, error } = await db.from('Order')
             .select('*')
             .eq('id', req.params.id)
             .eq('userId', req.user.id)
@@ -765,7 +764,7 @@ app.post('/api/orders/:id/cancel', authenticateToken, async (req: any, res) => {
         if (order.status !== 'PENDING') {
             return res.status(400).json({ message: 'Only PENDING orders can be cancelled' });
         }
-        const { data: updated, error: updateError } = await supabase.from('Order')
+        const { data: updated, error: updateError } = await db.from('Order')
             .update({ status: 'CANCELLED' })
             .eq('id', order.id)
             .select('*, items:OrderItem(*, product:Product(*))')
@@ -783,7 +782,7 @@ app.post('/api/orders/:id/return', authenticateToken, async (req: any, res) => {
     const reason = sanitize(req.body.reason || '');
     if (!reason) return res.status(400).json({ message: 'Return reason is required' });
     try {
-        const { data: order, error } = await supabase.from('Order')
+        const { data: order, error } = await db.from('Order')
             .select('*')
             .eq('id', req.params.id)
             .eq('userId', req.user.id)
@@ -831,7 +830,7 @@ app.get('/api/products', async (req, res) => {
 
 app.get('/api/products/:id', async (req, res) => {
     try {
-        const { data: product, error } = await supabase.from('Product')
+        const { data: product, error } = await db.from('Product')
             .select('*, category:Category(*)')
             .eq('id', req.params.id)
             .single();
@@ -874,7 +873,7 @@ app.get('/api/categories', async (req, res) => {
 app.post('/api/categories', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     const { name, icon, color } = req.body;
     try {
-        const { data: category, error } = await supabase.from('Category').insert({ name, icon, color }).select().single();
+        const { data: category, error } = await db.from('Category').insert({ name, icon, color }).select().single();
         if (error) throw error;
         res.status(201).json(category);
     } catch (error) {
@@ -885,7 +884,7 @@ app.post('/api/categories', authenticateToken, authorizeRoles(['ADMIN']), async 
 app.put('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     const { name, icon, color } = req.body;
     try {
-        const { data: category, error } = await supabase.from('Category')
+        const { data: category, error } = await db.from('Category')
             .update({ name, icon, color })
             .eq('id', req.params.id)
             .select()
@@ -899,14 +898,14 @@ app.put('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), asy
 
 app.delete('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     try {
-        const { count, error: countError } = await supabase.from('Product')
+        const { count, error: countError } = await db.from('Product')
             .select('id', { count: 'exact', head: true })
             .eq('categoryId', req.params.id);
 
         if (count && count > 0) {
             return res.status(400).json({ message: 'Cannot delete category with associated products' });
         }
-        const { error } = await supabase.from('Category').delete().eq('id', req.params.id);
+        const { error } = await db.from('Category').delete().eq('id', req.params.id);
         if (error) throw error;
         res.json({ message: 'Category deleted' });
     } catch (error) {
@@ -919,7 +918,7 @@ app.delete('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), 
 app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured } = req.body;
     try {
-        const { data: product, error } = await supabase.from('Product').insert({
+        const { data: product, error } = await db.from('Product').insert({
             title, description, price: parseFloat(price),
             originalPrice: originalPrice ? parseFloat(originalPrice) : null,
             image,
@@ -939,7 +938,7 @@ app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (r
 app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured } = req.body;
     try {
-        const { data: product, error } = await supabase.from('Product')
+        const { data: product, error } = await db.from('Product')
             .update({
                 title, description, price: parseFloat(price),
                 originalPrice: originalPrice ? parseFloat(originalPrice) : null,
@@ -962,7 +961,7 @@ app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async
 
 app.delete('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     try {
-        const { error } = await supabase.from('Product').delete().eq('id', req.params.id);
+        const { error } = await db.from('Product').delete().eq('id', req.params.id);
         if (error) throw error;
         invalidateProductCache();
         res.json({ message: 'Product deleted' });
@@ -992,7 +991,7 @@ app.post('/api/upload', authenticateToken, authorizeRoles(['ADMIN']), upload.sin
 
 app.get('/api/admin/orders', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     try {
-        const { data: orders, error } = await supabase.from('Order')
+        const { data: orders, error } = await db.from('Order')
             .select('*, user:User(*), items:OrderItem(*, product:Product(*))')
             .order('createdAt', { ascending: false });
 
@@ -1006,7 +1005,7 @@ app.get('/api/admin/orders', authenticateToken, authorizeRoles(['ADMIN']), async
 app.put('/api/admin/orders/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     const { status } = req.body;
     try {
-        const { data: order, error } = await supabase.from('Order')
+        const { data: order, error } = await db.from('Order')
             .update({ status })
             .eq('id', req.params.id)
             .select('*, user:User(*), items:OrderItem(*, product:Product(*))')
@@ -1023,7 +1022,7 @@ app.put('/api/admin/orders/:id', authenticateToken, authorizeRoles(['ADMIN']), a
 
 app.get('/api/admin/users', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     try {
-        const { data: users, error } = await supabase.from('User')
+        const { data: users, error } = await db.from('User')
             .select('*, orders:Order(id)')
             .order('createdAt', { ascending: false });
 
@@ -1056,11 +1055,11 @@ app.get('/api/admin/stats', authenticateToken, authorizeRoles(['ADMIN']), async 
             { data: revenueData, error: rErr },
             { data: recentOrders, error: roErr }
         ] = await Promise.all([
-            supabase.from('User').select('*', { count: 'exact', head: true }),
-            supabase.from('Product').select('*', { count: 'exact', head: true }),
-            supabase.from('Order').select('*', { count: 'exact', head: true }),
-            supabase.from('Order').select('total'),
-            supabase.from('Order').select('*, user:User(name)').order('createdAt', { ascending: false }).limit(5)
+            db.from('User').select('*', { count: 'exact', head: true }),
+            db.from('Product').select('*', { count: 'exact', head: true }),
+            db.from('Order').select('*', { count: 'exact', head: true }),
+            db.from('Order').select('total'),
+            db.from('Order').select('*, user:User(name)').order('createdAt', { ascending: false }).limit(5)
         ]);
 
         if (uErr || pErr || oErr || rErr || roErr) {
@@ -1092,7 +1091,7 @@ app.get('/api/admin/analytics', authenticateToken, authorizeRoles(['ADMIN']), as
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-        const { data: orders, error } = await supabase.from('Order')
+        const { data: orders, error } = await db.from('Order')
             .select('total, createdAt')
             .gte('createdAt', sixMonthsAgo.toISOString());
 
