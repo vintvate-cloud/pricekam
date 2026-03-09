@@ -1,0 +1,146 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 98%;
+    --foreground: 220 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 15%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 93% 60%;
+    --secondary-foreground: 220 25% 15%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 340 82% 65%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    --success: 152 69% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --toy-orange: 24 95% 58%;
+    --toy-green: 152 69% 45%;
+    --toy-purple: 270 67% 60%;
+    --toy-red: 0 78% 62%;
+    --toy-cyan: 190 80% 52%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 25% 15%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 25% 15%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217 91% 60%;
+
+    --font-display: 'Fredoka', sans-serif;
+    --font-body: 'Nunito', sans-serif;
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 40 33% 98%;
+    --card: 220 25% 12%;
+    --card-foreground: 40 33% 98%;
+    --popover: 220 25% 12%;
+    --popover-foreground: 40 33% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 93% 60%;
+    --secondary-foreground: 220 25% 15%;
+    --muted: 220 20% 18%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 340 82% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 217 91% 60%;
+    --sidebar-background: 220 25% 10%;
+    --sidebar-foreground: 40 33% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 18%;
+    --sidebar-accent-foreground: 40 33% 98%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground custom-scrollbar;
+    font-family: var(--font-body);
+    scroll-behavior: smooth;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  @keyframes bounce-custom {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .animate-bounce-custom {
+    animation: bounce-custom 0.6s ease-in-out infinite;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .custom-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
