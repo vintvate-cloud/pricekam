@@ -80,30 +80,30 @@ const ProductCard = ({ product }: { product: Product }) => {
           </h3>
         </Link>
 
-        <div className="flex items-center justify-between mt-auto pt-2 gap-3">
-          <div className="flex flex-col shrink-0">
-            <span className="text-2xl font-display font-black text-primary">₹{product.price}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-auto pt-2 gap-3">
+          <div className="flex flex-row sm:flex-col items-baseline sm:items-start gap-2 sm:gap-0 shrink-0">
+            <span className="text-xl sm:text-2xl font-display font-black text-primary">₹{product.price}</span>
             {product.originalPrice && (
-              <span className="text-xs text-muted-foreground line-through font-body font-bold opacity-40">₹{product.originalPrice}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground line-through font-body font-bold opacity-40">₹{product.originalPrice}</span>
             )}
           </div>
 
           <motion.button
             onClick={handleAddToCart}
             whileTap={{ scale: 0.92 }}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl font-display font-bold text-xs transition-all shadow-lg shrink-0 ${added
+            className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-display font-bold text-[10px] sm:text-xs transition-all shadow-lg w-full sm:w-auto ${added
               ? "bg-emerald-500 text-white shadow-emerald-500/25"
               : "bg-primary text-primary-foreground hover:opacity-90 shadow-primary/20"
               }`}
           >
             {added ? (
               <>
-                <Check className="h-4 w-4" />
+                <Check className="h-3.5 w-3.5 sm:h-4 w-4" />
                 <span>Added!</span>
               </>
             ) : (
               <>
-                <ShoppingCart className="h-3.5 w-3.5" />
+                <ShoppingCart className="h-3 w-3 sm:h-3.5 w-3.5" />
                 <span>Add to Cart</span>
               </>
             )}
