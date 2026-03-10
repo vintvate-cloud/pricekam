@@ -12,7 +12,7 @@ import multer from 'multer';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { Resend } from 'resend';
-import { generateInvoiceEmail } from './emailTemplates.js';
+import { generateInvoiceEmail, generateVerificationEmail } from './emailTemplates.js';
 import rateLimit from 'express-rate-limit';
 
 // --- Supabase Setup ---
@@ -270,9 +270,11 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const { data: user, error } = await db.from('User').insert({
+            id: crypto.randomUUID(),
             email,
             password: hashedPassword,
-            name
+            name,
+            updatedAt: new Date().toISOString()
         }).select().single();
 
         if (error || !user) throw error || new Error('Failed to create user');
@@ -325,7 +327,93 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     }
 });
 
-// Unified Supabase Auth Sink (Google, Email, Phone)
+// Send Verification OTP
+app.post('/api/auth/send-otp', authLimiter, async (req, res) => {
+    const email = sanitize(req.body.email);
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    try {
+        // Check if user already exists
+        const { data: existingUser } = await db.from('User').select('id').eq('email', email).maybeSingle();
+        if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 mins
+
+        // Save OTP to DB
+        // UPSERT if email already has a pending code
+        const { error } = await db.from('Verification').upsert({
+            email,
+            code: otp,
+            expiresAt
+        }, { onConflict: 'email' });
+
+        if (error) {
+            console.error('OTP DB Error:', error);
+            return res.status(500).json({
+                message: 'Database error while saving verification code',
+                detail: error.message,
+                hint: 'Ensure "Verification" table exists in Supabase. Run the SQL provided in the instructions.'
+            });
+        }
+
+        // Send Email
+        const { subject, html } = generateVerificationEmail(otp);
+        const { error: emailError } = await resend.emails.send({
+            from: 'Pricekam <onboarding@resend.dev>',
+            to: email,
+            subject,
+            html,
+        });
+
+        if (emailError) {
+            console.error('Resend OTP Error:', emailError);
+            return res.status(500).json({
+                message: 'Failed to send verification email',
+                detail: emailError.message,
+                hint: 'If using onboarding@resend.dev, you can only send to the email address associated with your Resend account.'
+            });
+        }
+
+        res.json({ success: true, message: 'Verification code sent!' });
+    } catch (err: any) {
+        console.error('OTP Send Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Verify OTP
+app.post('/api/auth/verify-otp', authLimiter, async (req, res) => {
+    const email = sanitize(req.body.email);
+    const code = sanitize(req.body.code);
+
+    if (!email || !code) return res.status(400).json({ message: 'Email and code are required' });
+
+    try {
+        const { data: record, error } = await db.from('Verification')
+            .select('*')
+            .eq('email', email)
+            .eq('code', code)
+            .maybeSingle();
+
+        if (error || !record) {
+            return res.status(400).json({ message: 'Invalid verification code' });
+        }
+
+        const now = new Date();
+        if (new Date(record.expiresAt) < now) {
+            return res.status(400).json({ message: 'Verification code expired' });
+        }
+
+        // Success - clean up the code
+        await db.from('Verification').delete().eq('email', email);
+
+        res.json({ success: true, message: 'Email verified!' });
+    } catch (err) {
+        console.error('OTP Verify Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 app.post('/api/auth/supabase', async (req, res) => {
     const { access_token, password } = req.body;
     if (!access_token) return res.status(400).json({ message: 'Missing access_token' });
@@ -362,12 +450,13 @@ app.post('/api/auth/supabase', async (req, res) => {
             hashedPassword = await bcrypt.hash(password, 10);
         }
 
-        // 3. Find existing user by googleId OR email only (avoid UUID/CUID id mismatch)
-        const orConditions = googleId ? `email.eq.${email},googleId.eq.${googleId}` : `email.eq.${email}`;
-        let { data: user } = await db.from('User')
-            .select('*')
-            .or(orConditions)
-            .maybeSingle();
+        // 3. Find existing user by email OR googleId
+        let { data: user } = await db.from('User').select('*').eq('email', email).maybeSingle();
+
+        if (!user && googleId) {
+            const { data: googleUser } = await db.from('User').select('*').eq('googleId', googleId).maybeSingle();
+            user = googleUser;
+        }
 
         const isNewUser = !user;
 
@@ -378,6 +467,7 @@ app.post('/api/auth/supabase', async (req, res) => {
                     ...(googleId && !user.googleId ? { googleId } : {}),
                     ...(!user.name && name ? { name } : {}),
                     ...(hashedPassword && !user.password ? { password: hashedPassword } : {}),
+                    updatedAt: new Date().toISOString()
                 })
                 .eq('id', user.id)
                 .select()
@@ -389,10 +479,12 @@ app.post('/api/auth/supabase', async (req, res) => {
             // Create brand new user
             const { data: newUser, error: createError } = await db.from('User')
                 .insert({
+                    id: crypto.randomUUID(),
                     email,
                     name: name || 'Pricekam User',
                     googleId,
                     password: hashedPassword,
+                    updatedAt: new Date().toISOString()
                 })
                 .select()
                 .single();
@@ -409,8 +501,12 @@ app.post('/api/auth/supabase', async (req, res) => {
             isNewUser
         });
     } catch (err: any) {
-        console.error('[Google Auth] Unexpected error:', err?.message, err?.code, err?.meta);
-        res.status(500).json({ message: 'Authentication sync failed', detail: err?.message });
+        console.error('[Google Auth Sync] CRITICAL ERROR:', err);
+        res.status(500).json({
+            message: 'Authentication sync failed',
+            detail: err?.message,
+            hint: 'This error happens because the database requires an ID and updatedAt field which were missing. I have re-added them.'
+        });
     }
 });
 

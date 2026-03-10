@@ -27,25 +27,90 @@ const SignupPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [step, setStep] = useState<"SIGNUP" | "EMAIL_VERIFY">("SIGNUP");
+  const [step, setStep] = useState<"EMAIL" | "OTP" | "SIGNUP">("EMAIL");
   const navigate = useNavigate();
 
   const strength = getStrength(password);
   const isStrongEnough = strength >= 3;
 
+  const handleSendOtp = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!email) {
+      setError("Email is required");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        let msg = data.message || 'Failed to send verification code';
+        if (data.detail) msg += `: ${data.detail}`;
+        if (data.hint) msg += ` (${data.hint})`;
+        throw new Error(msg);
+      }
+
+      setStep("OTP");
+    } catch (err: any) {
+      setError(err.message || "Failed to send verification code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!otp || otp.length !== 6) {
+      setError("Please enter a valid 6-digit code");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: otp }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        let msg = data.message || 'Invalid or expired code';
+        if (data.detail) msg += `: ${data.detail}`;
+        if (data.hint) msg += ` (${data.hint})`;
+        throw new Error(msg);
+      }
+
+      setStep("SIGNUP");
+    } catch (err: any) {
+      setError(err.message || "Verification failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !password || !confirmPassword) {
       setError("Please fill in all fields");
       return;
     }
     if (!isStrongEnough) {
-      setError("Please create a stronger password (at least 3 requirements met)");
+      setError("Please create a stronger password");
       return;
     }
     if (password !== confirmPassword) {
@@ -55,25 +120,17 @@ const SignupPage = () => {
 
     setIsLoading(true);
     try {
-      const { data, error: signupError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: name },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        }
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, password }),
       });
 
-      if (signupError) throw signupError;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Registration failed');
 
-      if (data.session) {
-        // Auto-login enabled in Supabase — sync with backend immediately
-        await syncWithBackend(data.session.access_token, password);
-      } else {
-        // Email verification required
-        sessionStorage.setItem('pending_password', password);
-        setStep("EMAIL_VERIFY");
-      }
+      await refetchUser();
+      navigate("/");
     } catch (err: any) {
       setError(err.message || "Registration failed.");
     } finally {
@@ -81,24 +138,11 @@ const SignupPage = () => {
     }
   };
 
-  const syncWithBackend = async (access_token: string, pass?: string) => {
-    const res = await fetch(`/api/auth/supabase`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ access_token, password: pass }),
-    });
-
-    if (!res.ok) throw new Error("Could not sync profile with server");
-    await refetchUser();
-    navigate("/");
-  };
-
   return (
     <AuthLayout
-      title="Create Account"
-      subtitle="Join Pricekam for the best kids products"
-      emoji="🎉"
+      title={step === "EMAIL" ? "Get Started" : step === "OTP" ? "Verify Email" : "Create Account"}
+      subtitle={step === "EMAIL" ? "Join Pricekam for the best kids products" : step === "OTP" ? `Enter the code sent to ${email}` : "Choose your name and a secure password"}
+      emoji={step === "EMAIL" ? "🎉" : step === "OTP" ? "📩" : "🛡️"}
     >
       <AnimatePresence mode="wait">
         {error && (
@@ -114,7 +158,66 @@ const SignupPage = () => {
         )}
       </AnimatePresence>
 
-      {step === "SIGNUP" ? (
+      {step === "EMAIL" && (
+        <form onSubmit={handleSendOtp} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-widest ml-1">Email Address</label>
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+              <input
+                type="email"
+                placeholder="you@email.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-muted/50 border border-transparent outline-none text-sm font-body hover:bg-muted focus:bg-card focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all disabled:opacity-50"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-display font-semibold text-base hover:opacity-90 transition-all shadow-lg"
+          >
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Continue"}
+          </button>
+        </form>
+      )}
+
+      {step === "OTP" && (
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-widest ml-1">Verification Code</label>
+            <input
+              type="text"
+              placeholder="000000"
+              maxLength={6}
+              required
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              disabled={isLoading}
+              className="w-full px-4 py-4 rounded-2xl bg-muted/50 border border-transparent outline-none text-2xl font-display font-bold text-center tracking-[1rem] hover:bg-muted focus:bg-card focus:border-primary/30 transition-all disabled:opacity-50"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-display font-semibold text-base hover:opacity-90 transition-all shadow-lg"
+          >
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Verify Code"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStep("EMAIL")}
+            className="w-full text-sm font-display font-bold text-muted-foreground hover:text-primary transition-colors py-2"
+          >
+            Change Email
+          </button>
+        </form>
+      )}
+
+      {step === "SIGNUP" && (
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Full Name */}
           <div className="space-y-2">
@@ -127,23 +230,6 @@ const SignupPage = () => {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={isLoading}
-                className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-muted/50 border border-transparent outline-none text-sm font-body hover:bg-muted focus:bg-card focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all disabled:opacity-50"
-              />
-            </div>
-          </div>
-
-          {/* Email */}
-          <div className="space-y-2">
-            <label className="text-xs font-display font-semibold text-muted-foreground uppercase tracking-widest ml-1">Email Address</label>
-            <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-              <input
-                type="email"
-                placeholder="you@email.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-muted/50 border border-transparent outline-none text-sm font-body hover:bg-muted focus:bg-card focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all disabled:opacity-50"
               />
@@ -223,50 +309,16 @@ const SignupPage = () => {
                 className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-muted/50 border border-transparent outline-none text-sm font-body hover:bg-muted focus:bg-card focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all disabled:opacity-50"
               />
             </div>
-            {confirmPassword && password !== confirmPassword && (
-              <p className="text-xs text-red-500 ml-1 font-body">Passwords don't match</p>
-            )}
           </div>
 
           <button
             type="submit"
             disabled={isLoading || !isStrongEnough || password !== confirmPassword}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-display font-semibold text-base hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/25 relative overflow-hidden group disabled:opacity-50 disabled:active:scale-100"
+            className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-display font-semibold text-base hover:opacity-90 transition-all shadow-lg"
           >
-            {isLoading ? (
-              <div className="flex items-center justify-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Creating Account...</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <span>Create Account</span>
-                <ArrowRight className="h-4 w-4" />
-              </div>
-            )}
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Complete Registration"}
           </button>
         </form>
-      ) : (
-        /* Email verification sent */
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-primary/5 border border-primary/20 rounded-[2rem] p-8 text-center"
-        >
-          <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <Mail className="h-10 w-10 text-primary animate-bounce" />
-          </div>
-          <h2 className="text-2xl font-display font-black text-foreground mb-4">Check Your Email 📬</h2>
-          <p className="font-body text-muted-foreground mb-8 leading-relaxed">
-            We've sent a verification link to <span className="text-primary font-bold">{email}</span>. Click it to activate your account.
-          </p>
-          <button
-            onClick={() => setStep("SIGNUP")}
-            className="text-sm font-display font-black text-primary uppercase tracking-widest hover:underline"
-          >
-            Wrong email? Go back
-          </button>
-        </motion.div>
       )}
 
       {/* Divider */}
