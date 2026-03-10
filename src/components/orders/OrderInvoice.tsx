@@ -7,6 +7,7 @@ interface OrderItem {
     product: { title: string; image: string; price: number };
     quantity: number;
     price: number;
+    selectedSize?: string | null;
 }
 
 interface Order {
@@ -144,7 +145,12 @@ const OrderInvoice = ({ order, onClose }: OrderInvoiceProps) => {
                                                 <div className="w-12 h-12 rounded-xl bg-slate-50 overflow-hidden shrink-0 border border-slate-100 print:hidden">
                                                     <img src={item.product.image} className="w-full h-full object-cover" />
                                                 </div>
-                                                <p className="font-display font-bold text-slate-800">{item.product.title}</p>
+                                                <div className="flex flex-col">
+                                                    <p className="font-display font-bold text-slate-800">{item.product.title}</p>
+                                                    {item.selectedSize && (
+                                                        <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-1">Size: {item.selectedSize}</p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="py-6 text-center font-body font-bold text-slate-600">x{item.quantity}</td>

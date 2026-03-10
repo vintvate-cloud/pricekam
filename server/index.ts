@@ -692,7 +692,7 @@ app.post('/api/payment/create-order', authenticateToken, async (req: any, res) =
 
         // Validate stock and compute subtotal from DB prices
         let subtotal = 0;
-        const validatedItems: { productId: string; quantity: number; price: number }[] = [];
+        const validatedItems: { productId: string; quantity: number; price: number; selectedSize?: string }[] = [];
         for (const cartItem of items) {
             const product = products.find((p: any) => p.id === cartItem.productId);
             if (!product) return res.status(400).json({ message: `Product ${cartItem.productId} not found` });
@@ -702,7 +702,12 @@ app.post('/api/payment/create-order', authenticateToken, async (req: any, res) =
                 return res.status(400).json({ message: `Insufficient stock for "${product.title}"` });
             }
             subtotal += product.price * qty;
-            validatedItems.push({ productId: product.id, quantity: qty, price: product.price });
+            validatedItems.push({ 
+                productId: product.id, 
+                quantity: qty, 
+                price: product.price,
+                selectedSize: cartItem.selectedSize 
+            });
         }
 
         const delivery = calcDeliveryCharge(paymentMethod, subtotal);
@@ -818,7 +823,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 
         // 5. Validate stock and build verified items list
         let subtotal = 0;
-        const verifiedItems: { productId: string; quantity: number; price: number }[] = [];
+        const verifiedItems: { productId: string; quantity: number; price: number; selectedSize?: string }[] = [];
         for (const cartItem of items) {
             const product = products.find((p: any) => p.id === cartItem.productId);
             if (!product) return res.status(400).json({ message: `Product not found: ${cartItem.productId}` });
@@ -828,7 +833,12 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
                 return res.status(400).json({ message: `"${product.title}" is out of stock` });
             }
             subtotal += product.price * qty;
-            verifiedItems.push({ productId: product.id, quantity: qty, price: product.price });
+            verifiedItems.push({ 
+                productId: product.id, 
+                quantity: qty, 
+                price: product.price,
+                selectedSize: cartItem.selectedSize
+            });
         }
 
         // 6. Re-compute totals server-side
@@ -888,6 +898,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
                 productId: item.productId,
                 quantity: item.quantity,
                 price: item.price,
+                selectedSize: item.selectedSize
             }))
         );
 
@@ -978,6 +989,7 @@ app.post('/api/orders', authenticateToken, async (req: any, res) => {
                 productId: item.productId,
                 quantity: parseInt(item.quantity),
                 price: parseFloat(item.price),
+                selectedSize: item.selectedSize
             }))
         );
 
@@ -1191,7 +1203,7 @@ app.delete('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), 
 // --- ADMIN PRODUCT ACTIONS ---
 
 app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
-    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured } = req.body;
+    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData } = req.body;
     try {
         const now = new Date().toISOString();
         const { data: product, error } = await db.from('Product').insert({
@@ -1208,6 +1220,9 @@ app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (r
             stock: parseInt(stock) || 0, 
             isFeatured: !!isFeatured,
             rating: 0,
+            sizes: Array.isArray(sizes) ? sizes : [],
+            sizeChart: sizeChart || null,
+            sizeChartData: sizeChartData || null,
             createdAt: now,
             updatedAt: now
         }).select().single();
@@ -1225,7 +1240,7 @@ app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (r
 });
 
 app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
-    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured } = req.body;
+    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData } = req.body;
     try {
         const { data: product, error } = await db.from('Product')
             .update({
@@ -1240,6 +1255,9 @@ app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async
                 ageGroup,
                 stock: parseInt(stock) || 0, 
                 isFeatured: !!isFeatured,
+                sizes: Array.isArray(sizes) ? sizes : [],
+                sizeChart: sizeChart || null,
+                sizeChartData: sizeChartData || null,
                 updatedAt: new Date().toISOString()
             })
             .eq('id', req.params.id)

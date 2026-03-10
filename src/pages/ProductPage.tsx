@@ -9,7 +9,7 @@ import CartDrawer from "@/components/cart/CartDrawer";
 import ProductCard from "@/components/product/ProductCard";
 import { useCart } from "@/context/CartContext";
 import { Star, Minus, Plus, ChevronLeft, ShoppingCart, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from '@/lib/api-config';
 
 interface Product {
@@ -25,6 +25,9 @@ interface Product {
   rating: number;
   badge?: string;
   description: string;
+  sizes?: string[];
+  sizeChart?: string;
+  sizeChartData?: { headers: string[], rows: string[][] };
 }
 
 
@@ -35,9 +38,11 @@ const ProductPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [isZoomed, setIsZoomed] = useState(false);
+  const [showSizeChart, setShowSizeChart] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -162,7 +167,38 @@ const ProductPage = () => {
               {product.originalPrice && <span className="text-2xl text-muted-foreground line-through font-body font-bold opacity-50">₹{product.originalPrice}</span>}
             </div>
 
-            <p className="text-muted-foreground font-body text-lg mb-10 leading-relaxed max-w-xl">{product.description}</p>
+            <p className="text-muted-foreground font-body text-lg mb-8 leading-relaxed max-w-xl">{product.description}</p>
+
+            {product.sizes && product.sizes.length > 0 && (
+              <div className="mb-10">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-display font-black tracking-widest text-foreground uppercase">CHOOSE SIZE</span>
+                  { (product.sizeChart || product.sizeChartData) && (
+                    <button 
+                      onClick={() => setShowSizeChart(true)}
+                      className="text-xs font-display font-black text-primary hover:underline transition-all"
+                    >
+                      VIEW SIZE CHART
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`min-w-[56px] h-14 px-4 rounded-2xl font-display font-black text-lg transition-all border-2 ${
+                        selectedSize === size 
+                        ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105' 
+                        : 'bg-background text-foreground border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row items-center gap-6 mt-auto">
               <div className="flex items-center gap-6 bg-muted/50 border border-border p-2 px-4 rounded-3xl w-full sm:w-auto">
@@ -191,9 +227,15 @@ const ProductPage = () => {
                     navigate("/login");
                     return;
                   }
-                  for (let i = 0; i < qty; i++) addItem({ ...product, category: product.category.name });
+                  if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+                    toast.error("Please select a size", {
+                      description: "Choosing your perfect fit ensures maximum joy! ✨",
+                    });
+                    return;
+                  }
+                  addItem({ ...product, category: product.category.name }, selectedSize || undefined);
                   toast.success(`${product.title} added to cart!`, {
-                    description: `₹${product.price} × ${qty}`,
+                    description: `${selectedSize ? `Size: ${selectedSize} | ` : ''}₹${product.price} × ${qty}`,
                     duration: 2500,
                   });
                 }}
@@ -214,6 +256,85 @@ const ProductPage = () => {
           </section>
         )}
       </main>
+
+      {/* Size Chart Modal */}
+      <AnimatePresence>
+        {showSizeChart && (product.sizeChart || product.sizeChartData) && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 md:p-6 z-[100]">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSizeChart(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-3xl bg-card rounded-[2.5rem] shadow-2xl p-6 md:p-10 border border-border"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-3xl font-display font-black text-foreground tracking-tight">Size Guide ✨</h2>
+                  <p className="text-muted-foreground font-body text-sm font-medium italic">Find your perfect fit for maximum comfort.</p>
+                </div>
+                <button 
+                  onClick={() => setShowSizeChart(false)} 
+                  className="p-4 bg-accent rounded-2xl hover:bg-red-400/10 hover:text-red-400 transition-all"
+                >
+                  <Plus className="h-6 w-6 rotate-45" />
+                </button>
+              </div>
+              
+              <div className="rounded-[2rem] overflow-hidden bg-accent border-2 border-border shadow-inner">
+                {product.sizeChartData ? (
+                  <div className="overflow-x-auto p-1">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-primary shadow-sm">
+                          {product.sizeChartData.headers.map((header, i) => (
+                            <th key={i} className="p-4 text-left font-display font-black text-primary-foreground uppercase text-xs tracking-widest first:rounded-tl-2xl last:rounded-tr-2xl">{header}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {product.sizeChartData.rows.map((row, i) => (
+                          <tr key={i} className={`transition-colors ${i % 2 === 0 ? 'bg-background' : 'bg-muted/30'} hover:bg-primary/5`}>
+                            {row.map((cell, j) => (
+                              <td key={j} className={`p-4 font-body font-bold text-foreground border-b border-border/50 ${i === product.sizeChartData!.rows.length - 1 ? (j === 0 ? 'rounded-bl-2xl' : (j === row.length - 1 ? 'rounded-br-2xl' : '')) : ''}`}>{cell}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : product.sizeChart ? (
+                  <img 
+                    src={product.sizeChart} 
+                    alt="Size Chart" 
+                    className="w-full h-auto object-contain max-h-[60vh]"
+                  />
+                ) : (
+                  <div className="p-20 text-center">
+                    <p className="text-muted-foreground font-display font-bold">No size chart available for this treasure yet. 🧩</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-8 pt-8 border-t border-border flex justify-end">
+                <button 
+                  onClick={() => setShowSizeChart(false)}
+                  className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-display font-black hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                >
+                  GOT IT, THANKS!
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <Footer />
     </div>
   );

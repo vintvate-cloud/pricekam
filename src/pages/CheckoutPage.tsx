@@ -80,7 +80,11 @@ const CheckoutPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentMethod,
-          items: items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+          items: items.map((item) => ({ 
+            productId: item.product.id, 
+            quantity: item.quantity,
+            selectedSize: item.selectedSize
+          })),
         }),
         credentials: "include",
       });
@@ -504,7 +508,9 @@ const CheckoutPage = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-display font-bold text-foreground truncate group-hover:text-primary transition-colors">{item.product.title}</p>
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Qty: {item.quantity} · ₹{item.product.price}</p>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
+                        {item.selectedSize ? `Size: ${item.selectedSize} · ` : ""}Qty: {item.quantity} · ₹{item.product.price}
+                      </p>
                     </div>
                     <p className="text-sm font-display font-black text-foreground">₹{(item.product.price * item.quantity).toFixed(2)}</p>
                   </div>

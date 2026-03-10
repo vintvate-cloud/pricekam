@@ -4,6 +4,7 @@ interface InvoiceItem {
   product: { title: string; image?: string };
   quantity: number;
   price: number;
+  selectedSize?: string | null;
 }
 
 interface InvoiceOrder {
@@ -42,7 +43,10 @@ export function generateInvoiceEmail(order: InvoiceOrder, userEmail: string): { 
 
   const itemRows = order.items.map(item => `
         <tr>
-            <td style="padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333;">${item.product.title}</td>
+            <td style="padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333;">
+              ${item.product.title}
+              ${item.selectedSize ? `<br/><span style="font-size: 11px; color: #7c3aed; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Size: ${item.selectedSize}</span>` : ''}
+            </td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #666; text-align: center;">×${item.quantity}</td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #666; text-align: right;">₹${item.price.toFixed(2)}</td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; font-weight: 700; color: #111; text-align: right;">₹${(item.price * item.quantity).toFixed(2)}</td>

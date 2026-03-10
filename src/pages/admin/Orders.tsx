@@ -12,6 +12,7 @@ interface OrderItem {
     product: { title: string; image: string; price: number };
     quantity: number;
     price: number;
+    selectedSize?: string | null;
 }
 
 interface Order {
@@ -209,7 +210,14 @@ const Orders = () => {
                                                             <img src={item.product.image} className="w-10 h-10 rounded-xl object-cover bg-accent" />
                                                             <div>
                                                                 <p className="text-xs font-display font-black text-foreground line-clamp-1">{item.product.title}</p>
-                                                                <p className="text-[10px] font-display font-bold text-muted-foreground/60">Qty: {item.quantity}</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-[10px] font-display font-bold text-muted-foreground/60">Qty: {item.quantity}</p>
+                                                                    {item.selectedSize && (
+                                                                        <span className="text-[9px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded-md uppercase tracking-widest">
+                                                                            Size: {item.selectedSize}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <p className="text-sm font-display font-black text-foreground">₹{(item.price * item.quantity).toFixed(2)}</p>

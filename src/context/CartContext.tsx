@@ -2,16 +2,17 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Product } from "@/components/product/ProductCard";
 
 interface CartItem {
-  id: string;
+  id: string; // This will now be a combination of productId + size
   product: Product;
   quantity: number;
+  selectedSize?: string;
 }
 
 interface CartContextType {
   items: CartItem[];
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  addItem: (product: Product) => void;
+  addItem: (product: Product, selectedSize?: string) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -45,11 +46,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [items]);
 
-  const addItem = (product: Product) => {
+  const addItem = (product: Product, selectedSize?: string) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
-      if (existing) return prev.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { id: product.id, product, quantity: 1 }];
+      const cartItemId = selectedSize ? `${product.id}-${selectedSize}` : product.id;
+      const existing = prev.find((i) => i.id === cartItemId);
+      if (existing) return prev.map((i) => i.id === cartItemId ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { id: cartItemId, product, quantity: 1, selectedSize }];
     });
   };
 
