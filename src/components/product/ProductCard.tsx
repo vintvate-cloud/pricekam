@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { ShoppingCart, Star, Check } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -22,6 +23,8 @@ export interface Product {
 
 const ProductCard = ({ product }: { product: Product }) => {
   const { addItem } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [added, setAdded] = useState(false);
 
   const discount = product.originalPrice
@@ -30,6 +33,16 @@ const ProductCard = ({ product }: { product: Product }) => {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      toast.error("Please login to add items to cart", {
+        description: "You need an account to shop with us!",
+        duration: 3000,
+      });
+      navigate("/login");
+      return;
+    }
+
     addItem(product);
     setAdded(true);
     toast.success(`${product.title.substring(0, 30)}${product.title.length > 30 ? "…" : ""} added to cart!`, {

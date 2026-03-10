@@ -71,7 +71,7 @@ const CheckoutPage = () => {
     setIsPlacing(true);
 
     try {
-      
+
       const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
 
       // Step 1: Create Razorpay order (server verifies prices from DB)
@@ -127,7 +127,10 @@ const CheckoutPage = () => {
 
               if (!verifyRes.ok) {
                 const err = await verifyRes.json().catch(() => ({}));
-                throw new Error(err.message || "Order creation failed after payment");
+                let msg = err.message || "Order creation failed after payment";
+                if (err.detail) msg += `\nDetail: ${err.detail}`;
+                if (err.hint) msg += `\nHint: ${err.hint}`;
+                throw new Error(msg);
               }
               const savedOrder = await verifyRes.json();
               setOrderId(savedOrder.id);
@@ -152,7 +155,7 @@ const CheckoutPage = () => {
     } catch (error: any) {
       if (error?.message !== "Payment cancelled by user") {
         console.error("Checkout Error:", error);
-        alert("Payment failed. Please try again.");
+        alert(`Payment failed: ${error.message || "Please try again."}`);
       }
     } finally {
       setIsPlacing(false);

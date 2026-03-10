@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import CartDrawer from "@/components/cart/CartDrawer";
@@ -30,6 +32,8 @@ interface Product {
 const ProductPage = () => {
   const { id } = useParams();
   const { addItem } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
@@ -178,7 +182,21 @@ const ProductPage = () => {
               </div>
 
               <button
-                onClick={() => { for (let i = 0; i < qty; i++) addItem({ ...product, category: product.category.name }); }}
+                onClick={() => {
+                  if (!user) {
+                    toast.error("Please login to add items to cart", {
+                      description: "You need an account to shop with us!",
+                      duration: 3000,
+                    });
+                    navigate("/login");
+                    return;
+                  }
+                  for (let i = 0; i < qty; i++) addItem({ ...product, category: product.category.name });
+                  toast.success(`${product.title} added to cart!`, {
+                    description: `₹${product.price} × ${qty}`,
+                    duration: 2500,
+                  });
+                }}
                 className="flex-1 w-full py-5 bg-primary text-primary-foreground rounded-3xl font-display font-black text-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-primary/30"
               >
                 <ShoppingCart className="h-6 w-6" /> ADD TO JOYBAG

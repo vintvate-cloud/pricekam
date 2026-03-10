@@ -358,9 +358,12 @@ app.post('/api/auth/send-otp', authLimiter, async (req, res) => {
         }
 
         // Send Email
+        const sender = process.env.EMAIL_FROM || 'Pricekam <onboarding@resend.dev>';
+        console.log('Attempting to send OTP email from:', sender);
+
         const { subject, html } = generateVerificationEmail(otp);
         const { error: emailError } = await resend.emails.send({
-            from: 'Pricekam <onboarding@resend.dev>',
+            from: sender,
             to: email,
             subject,
             html,
@@ -370,8 +373,10 @@ app.post('/api/auth/send-otp', authLimiter, async (req, res) => {
             console.error('Resend OTP Error:', emailError);
             return res.status(500).json({
                 message: 'Failed to send verification email',
-                detail: emailError.message,
-                hint: 'If using onboarding@resend.dev, you can only send to the email address associated with your Resend account.'
+                detail: `${emailError.message} (Using sender: ${sender})`,
+                hint: sender.includes('onboarding@resend.dev')
+                    ? 'The server is falling back to the sandbox email because EMAIL_FROM is missing in .env.'
+                    : 'The domain is verified, but Resend is still rejecting the from address.'
             });
         }
 
@@ -734,9 +739,12 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 
         const advancePaid = paymentMethod === 'cod' ? amountExpected : null;
 
-        // 8. Create order in DB + decrement stock (Manually handling since client doesn't support transactions easily)
-        // First, create the order
+        // 8. Create order in DB + decrement stock
+        const orderId = crypto.randomUUID();
+        console.log(`Step 8: Creating order ${orderId} in DB...`);
+
         const { data: order, error: orderError } = await db.from('Order').insert({
+            id: orderId,
             userId: req.user.id,
             total: orderTotal,
             status: 'PENDING',
@@ -751,13 +759,20 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
             razorpayPaymentId: razorpay_payment_id,
             deliveryCharge: delivery,
             advancePaid,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         }).select().single();
 
-        if (orderError || !order) throw orderError || new Error('Failed to create order');
+        if (orderError || !order) {
+            console.error('Order Insertion Error:', orderError);
+            throw orderError || new Error('Failed to create order');
+        }
 
+        console.log('Step 9: Creating order items...');
         // Second, create order items
         const { error: itemsError } = await db.from('OrderItem').insert(
             verifiedItems.map(item => ({
+                id: crypto.randomUUID(),
                 orderId: order.id,
                 productId: item.productId,
                 quantity: item.quantity,
@@ -777,29 +792,46 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
             }
         }
 
+        console.log('Step 8: Fetching full order details for response and invoice...');
         // Fetch full order for response (with nested items)
-        const { data: fullOrder } = await db.from('Order')
+        const { data: fullOrder, error: fullOrderError } = await db.from('Order')
             .select('*, items:OrderItem(*, product:Product(*))')
             .eq('id', order.id)
             .single();
 
+        if (fullOrderError) {
+            console.error('Error fetching full order:', fullOrderError);
+            // We don't throw here to avoid failing a successful payment, but we should log it
+        }
+
+        console.log('Step 9: Sending invoice email...');
         // 4. Send invoice email (non-blocking)
         try {
-            const { subject, html } = generateInvoiceEmail(order, user.email);
-            await resend.emails.send({
-                from: 'Joyful Cart <onboarding@resend.dev>',
-                to: user.email,
-                subject,
-                html,
-            });
+            if (fullOrder) {
+                const { subject, html } = generateInvoiceEmail(fullOrder, user.email);
+                await resend.emails.send({
+                    from: process.env.EMAIL_FROM || 'Pricekam <noreply@pricekam.com>',
+                    to: user.email,
+                    subject,
+                    html,
+                });
+                console.log('Invoice email sent successfully to:', user.email);
+            } else {
+                console.warn('Skipping invoice email: fullOrder not found');
+            }
         } catch (emailErr) {
             console.error('Invoice email failed (non-critical):', emailErr);
         }
 
-        res.status(201).json(order);
-    } catch (error) {
-        console.error('Payment Verify Error:', error);
-        res.status(500).json({ message: 'Server error during order creation' });
+        console.log('Payment verification completed successfully for Order:', order.id);
+        res.status(201).json(fullOrder || order);
+    } catch (error: any) {
+        console.error('💥 Payment Verify Error:', error.message, error.stack);
+        res.status(500).json({
+            message: 'Server error during order creation',
+            detail: error.message,
+            stack: error.stack
+        });
     }
 });
 
@@ -809,7 +841,9 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 app.post('/api/orders', authenticateToken, async (req: any, res) => {
     const { total, items, customerAddress, paymentMethod } = req.body;
     try {
+        const orderId = crypto.randomUUID();
         const { data: order, error: orderError } = await db.from('Order').insert({
+            id: orderId,
             userId: req.user.id,
             total: parseFloat(total),
             status: 'PENDING',
@@ -820,16 +854,19 @@ app.post('/api/orders', authenticateToken, async (req: any, res) => {
             state: customerAddress?.state,
             pincode: customerAddress?.pincode,
             paymentMethod: paymentMethod,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         }).select().single();
 
         if (orderError || !order) throw orderError || new Error('Failed to create order');
 
         const { error: itemsError } = await db.from('OrderItem').insert(
             items.map((item: any) => ({
+                id: crypto.randomUUID(),
                 orderId: order.id,
                 productId: item.productId,
                 quantity: parseInt(item.quantity),
-                price: parseFloat(item.price)
+                price: parseFloat(item.price),
             }))
         );
 
@@ -839,6 +876,22 @@ app.post('/api/orders', authenticateToken, async (req: any, res) => {
             .select('*, items:OrderItem(*, product:Product(*))')
             .eq('id', order.id)
             .single();
+
+        // Send invoice email (non-blocking)
+        try {
+            const { data: user } = await db.from('User').select('email').eq('id', req.user.id).single();
+            if (user && fullOrder) {
+                const { subject, html } = generateInvoiceEmail(fullOrder, user.email);
+                await resend.emails.send({
+                    from: process.env.EMAIL_FROM || 'Pricekam <noreply@pricekam.com>',
+                    to: user.email,
+                    subject,
+                    html,
+                });
+            }
+        } catch (emailErr) {
+            console.error('Invoice email failed (non-critical):', emailErr);
+        }
 
         res.status(201).json(fullOrder);
     } catch (error) {
