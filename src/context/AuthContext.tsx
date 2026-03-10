@@ -21,7 +21,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
     const queryClient = useQueryClient();
 
     const { data, isLoading, refetch } = useQuery({
@@ -37,15 +36,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         retry: false,
     });
 
+    const user = data?.user || null;
+
     useEffect(() => {
-        if (data?.user) {
-            setUser(data.user);
-            localStorage.setItem('userRole', data.user.role.toLowerCase());
-        } else {
-            setUser(null);
+        if (user) {
+            localStorage.setItem('userRole', user.role.toLowerCase());
+        } else if (data !== undefined) {
             localStorage.removeItem('userRole');
         }
-    }, [data]);
+    }, [user, data]);
 
     const logoutMutation = useMutation({
         mutationFn: async () => {
@@ -55,7 +54,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
         },
         onSuccess: () => {
-            setUser(null);
             localStorage.removeItem('userRole');
             queryClient.invalidateQueries({ queryKey: ['me'] });
         },

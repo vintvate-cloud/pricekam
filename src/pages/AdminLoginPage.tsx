@@ -55,7 +55,7 @@ const AdminLoginPage = () => {
                 throw new Error("Access denied. Admin privileges required.");
             }
 
-            refetchUser();
+            await refetchUser();
             navigate("/admin/dashboard");
         } catch (err: any) {
             setError(err.message || "Something went wrong. Please try again.");

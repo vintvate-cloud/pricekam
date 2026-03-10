@@ -21,7 +21,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = f
     }
 
     if (!user) {
-        // Redirect to login but save the current location to redirect back after login
+        // If it's an admin path, redirect to admin login
+        if (adminOnly || location.pathname.startsWith('/admin')) {
+            return <Navigate to="/admin" state={{ from: location }} replace />;
+        }
+        // Otherwise redirect to customer login
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
