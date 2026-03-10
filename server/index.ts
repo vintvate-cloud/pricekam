@@ -420,7 +420,9 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
 
         // 4. Construct reset link for frontend
         const origin = req.get('origin');
-        const frontendUrl = origin || process.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+        // Prefer VITE_FRONTEND_URL from environment for production consistency, 
+        // fallback to request origin (for dev), then a default.
+        const frontendUrl = process.env.VITE_FRONTEND_URL || origin || 'https://www.pricekam.com';
         const resetLink = `${frontendUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
 
         // 5. Send email via Resend
