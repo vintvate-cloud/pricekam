@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AuthLayout from "@/components/auth/AuthLayout";
-import { supabase } from "@/lib/supabase";
+import { API_URL } from "@/lib/api-config";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -17,10 +17,19 @@ const ForgotPasswordPage = () => {
     setError("");
     setIsLoading(true);
     try {
-      const { error: sbError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.trim() }),
       });
-      if (sbError) throw sbError;
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to send reset link");
+      }
+      
       setSent(true);
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");

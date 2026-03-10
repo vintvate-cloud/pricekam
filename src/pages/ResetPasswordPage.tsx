@@ -1,13 +1,10 @@
-import { useState, useEffect, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Lock, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import AuthLayout from "@/components/auth/AuthLayout";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { API_URL } from '@/lib/api-config';
-
-
 
 // Password strength rules (same as signup)
 const RULES = [
@@ -25,34 +22,40 @@ const ResetPasswordPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [done, setDone] = useState(false);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
+    const token = searchParams.get("token");
+    const email = searchParams.get("email");
 
     const passed = RULES.filter(r => r.test(password)).length;
     const isStrong = passed >= 4;
     const isValid = isStrong && password === confirm;
 
-    // Supabase sends the token in the URL hash — we need to exchange it
-    useEffect(() => {
-        supabase.auth.getSession(); // triggers session from hash
-    }, []);
-
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!isValid) return;
+        if (!token || !email) {
+            toast.error("Invalid or missing reset token. Please request a new link.");
+            return;
+        }
+
         setIsLoading(true);
         try {
-            const { error: sbError } = await supabase.auth.updateUser({ password });
-            if (sbError) throw sbError;
+            const response = await fetch(`${API_URL}/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email, 
+                    token, 
+                    password 
+                }),
+            });
 
-            // Also update in our own DB
-            const session = (await supabase.auth.getSession()).data.session;
-            if (session) {
-                await fetch(`${API_URL}/auth/supabase`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ access_token: session.access_token, password }),
-                    credentials: 'include',
-                });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || "Password reset failed");
             }
+
             setDone(true);
             toast.success("Password updated successfully!");
             setTimeout(() => navigate('/login'), 2000);

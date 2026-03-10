@@ -203,3 +203,36 @@ export function generateVerificationEmail(otp: string): { subject: string; html:
   `;
   return { subject, html };
 }
+
+export function generateResetPasswordEmail(resetLink: string): { subject: string; html: string } {
+  const subject = `🔐 Reset your Pricekam password`;
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+  <div style="max-width: 500px; margin: 40px auto; padding: 40px; background-color: #ffffff; border-radius: 24px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🔑</div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #111827; letter-spacing: -0.025em;">Reset Your Password</h1>
+      <p style="margin-top: 8px; font-size: 16px; color: #6b7280;">We received a request to reset your password. Click the button below to choose a new one.</p>
+    </div>
+    
+    <div style="text-align: center; margin-bottom: 32px;">
+      <a href="${resetLink}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; padding: 16px 32px; border-radius: 16px; font-size: 16px; font-weight: 700; text-decoration: none; transition: background-color 0.2s;">Reset Password</a>
+    </div>
+    
+    <div style="text-align: center;">
+      <p style="font-size: 14px; color: #9ca3af; margin-bottom: 24px;">This link will expire in 60 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
+      <div style="height: 1px; background-color: #e5e7eb; margin-bottom: 24px;"></div>
+      <p style="font-size: 12px; color: #9ca3af;">&copy; 2024 Pricekam — Where Every Toy Tells a Story</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+  return { subject, html };
+}

@@ -12,7 +12,7 @@ import multer from 'multer';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { Resend } from 'resend';
-import { generateInvoiceEmail, generateVerificationEmail } from './emailTemplates.js';
+import { generateInvoiceEmail, generateVerificationEmail, generateResetPasswordEmail } from './emailTemplates.js';
 import rateLimit from 'express-rate-limit';
 
 // --- Supabase Setup ---
@@ -387,6 +387,117 @@ app.post('/api/auth/send-otp', authLimiter, async (req, res) => {
     }
 });
 
+// Forgot Password - Custom Token Based
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+    const email = sanitize(req.body.email);
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    try {
+        // 1. Check if user exists in our DB
+        const { data: user, error: userError } = await db.from('User').select('id, email').eq('email', email).maybeSingle();
+        
+        // If user doesn't exist, we still return success to prevent email enumeration
+        if (!user) {
+            console.log(`Forgot password request for non-existent email: ${email}`);
+            return res.json({ success: true, message: 'If an account exists with this email, a reset link has been sent.' });
+        }
+
+        // 2. Generate custom reset token
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+        // 3. Store in password_reset table
+        const { error: resetError } = await db.from('password_reset').upsert({
+            email: user.email,
+            token,
+            expiresAt
+        });
+
+        if (resetError) {
+            console.error('Password reset token storage failed:', resetError);
+            return res.status(500).json({ message: 'Failed to initialize password reset' });
+        }
+
+        // 4. Construct reset link for frontend
+        const origin = req.get('origin');
+        const frontendUrl = origin || process.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+        const resetLink = `${frontendUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
+
+        // 5. Send email via Resend
+        const sender = process.env.EMAIL_FROM || 'Pricekam <noreply@pricekam.com>';
+        const { subject, html } = generateResetPasswordEmail(resetLink);
+        
+        const { error: emailError } = await resend.emails.send({
+            from: sender,
+            to: user.email,
+            subject,
+            html,
+        });
+
+        if (emailError) {
+            console.error('Resend Forgot Password Error:', emailError);
+            return res.status(500).json({ message: 'Failed to send reset email' });
+        }
+
+        res.json({ success: true, message: 'If an account exists with this email, a reset link has been sent.' });
+    } catch (err: any) {
+        console.error('Forgot Password Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Reset Password - Custom Token Based
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+    const email = sanitize(req.body.email);
+    const token = sanitize(req.body.token);
+    const { password } = req.body;
+
+    if (!email || !token || !password) {
+        return res.status(400).json({ message: 'Email, token and new password are required' });
+    }
+
+    try {
+        // 1. Verify token
+        const { data: record, error: tokenError } = await db.from('password_reset')
+            .select('*')
+            .eq('email', email)
+            .eq('token', token)
+            .maybeSingle();
+
+        if (tokenError || !record) {
+            return res.status(400).json({ message: 'Invalid or expired reset link' });
+        }
+
+        // 2. Check expiry
+        if (new Date(record.expiresAt) < new Date()) {
+            await db.from('password_reset').delete().eq('email', email);
+            return res.status(400).json({ message: 'Reset link has expired' });
+        }
+
+        // 3. Update password in User table
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const { error: userError } = await db.from('User')
+            .update({ 
+                password: hashedPassword,
+                updatedAt: new Date().toISOString()
+            })
+            .eq('email', email);
+
+        if (userError) {
+            console.error('User password update failed:', userError);
+            throw userError;
+        }
+
+        // 4. Clean up the token
+        await db.from('password_reset').delete().eq('email', email);
+
+        res.json({ success: true, message: 'Password updated successfully!' });
+    } catch (err: any) {
+        console.error('Reset Password Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Verify OTP
 app.post('/api/auth/verify-otp', authLimiter, async (req, res) => {
     const email = sanitize(req.body.email);
@@ -583,7 +694,7 @@ app.post('/api/payment/create-order', authenticateToken, async (req: any, res) =
         let subtotal = 0;
         const validatedItems: { productId: string; quantity: number; price: number }[] = [];
         for (const cartItem of items) {
-            const product = products.find(p => p.id === cartItem.productId);
+            const product = products.find((p: any) => p.id === cartItem.productId);
             if (!product) return res.status(400).json({ message: `Product ${cartItem.productId} not found` });
             const qty = parseInt(cartItem.quantity);
             if (qty < 1) return res.status(400).json({ message: 'Invalid quantity' });
@@ -709,7 +820,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
         let subtotal = 0;
         const verifiedItems: { productId: string; quantity: number; price: number }[] = [];
         for (const cartItem of items) {
-            const product = products.find(p => p.id === cartItem.productId);
+            const product = products.find((p: any) => p.id === cartItem.productId);
             if (!product) return res.status(400).json({ message: `Product not found: ${cartItem.productId}` });
             const qty = parseInt(cartItem.quantity);
             if (qty < 1) return res.status(400).json({ message: 'Invalid quantity' });
@@ -784,7 +895,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 
         // Third, decrement stock for each item
         for (const item of verifiedItems) {
-            const product = products.find(p => p.id === item.productId);
+            const product = products.find((p: any) => p.id === item.productId);
             if (product) {
                 await db.from('Product')
                     .update({ stock: product.stock - item.quantity })
@@ -1022,7 +1133,7 @@ app.get('/api/categories', async (req, res) => {
         }
 
         // Transform: products array to count for compatibility with frontend expectations
-        const transformed = (categories || []).map(c => ({
+        const transformed = (categories || []).map((c: any) => ({
             ...c,
             _count: { products: Array.isArray(c.products) ? c.products.length : 0 }
         }));
@@ -1196,7 +1307,7 @@ app.get('/api/admin/users', authenticateToken, authorizeRoles(['ADMIN']), async 
         }
 
         // Transform: count orders in JS
-        const transformed = (users || []).map(u => ({
+        const transformed = (users || []).map((u: any) => ({
             ...u,
             _count: { orders: Array.isArray(u.orders) ? u.orders.length : 0 }
         }));
@@ -1231,7 +1342,7 @@ app.get('/api/admin/stats', authenticateToken, authorizeRoles(['ADMIN']), async 
             return res.status(500).json({ message: 'Database error fetching stats' });
         }
 
-        const totalRevenue = revenueData?.reduce((acc, o) => acc + o.total, 0) || 0;
+        const totalRevenue = revenueData?.reduce((acc: any, o: any) => acc + o.total, 0) || 0;
 
         res.json({
             totalUsers: totalUsers || 0,
@@ -1261,7 +1372,7 @@ app.get('/api/admin/analytics', authenticateToken, authorizeRoles(['ADMIN']), as
 
         if (error) throw error;
 
-        const revenueByMonth = orders?.reduce((acc: any, order) => {
+        const revenueByMonth = orders?.reduce((acc: any, order: any) => {
             const month = new Date(order.createdAt).toLocaleString('default', { month: 'short' });
             acc[month] = (acc[month] || 0) + order.total;
             return acc;
