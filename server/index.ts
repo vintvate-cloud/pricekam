@@ -1193,20 +1193,34 @@ app.delete('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), 
 app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured } = req.body;
     try {
+        const now = new Date().toISOString();
         const { data: product, error } = await db.from('Product').insert({
-            title, description, price: parseFloat(price),
+            id: crypto.randomUUID(),
+            title, 
+            description, 
+            price: parseFloat(price),
             originalPrice: originalPrice ? parseFloat(originalPrice) : null,
             image,
             images: Array.isArray(images) ? images : [],
-            categoryId, brand, ageGroup,
-            stock: parseInt(stock) || 0, isFeatured: !!isFeatured
+            categoryId, 
+            brand: brand || 'Generic', 
+            ageGroup: ageGroup || 'All',
+            stock: parseInt(stock) || 0, 
+            isFeatured: !!isFeatured,
+            rating: 0,
+            createdAt: now,
+            updatedAt: now
         }).select().single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Product Creation DB Error:', error);
+            throw error;
+        }
         invalidateProductCache();
         res.status(201).json(product);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+    } catch (error: any) {
+        console.error('Product Creation Route Error:', error);
+        res.status(500).json({ message: 'Server error', detail: error.message });
     }
 });
 
@@ -1215,22 +1229,32 @@ app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async
     try {
         const { data: product, error } = await db.from('Product')
             .update({
-                title, description, price: parseFloat(price),
+                title, 
+                description, 
+                price: parseFloat(price),
                 originalPrice: originalPrice ? parseFloat(originalPrice) : null,
                 image,
                 images: Array.isArray(images) ? images : [],
-                categoryId, brand, ageGroup,
-                stock: parseInt(stock) || 0, isFeatured: !!isFeatured
+                categoryId, 
+                brand, 
+                ageGroup,
+                stock: parseInt(stock) || 0, 
+                isFeatured: !!isFeatured,
+                updatedAt: new Date().toISOString()
             })
             .eq('id', req.params.id)
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Product Update DB Error:', error);
+            throw error;
+        }
         invalidateProductCache();
         res.json(product);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+    } catch (error: any) {
+        console.error('Product Update Route Error:', error);
+        res.status(500).json({ message: 'Server error', detail: error.message });
     }
 });
 

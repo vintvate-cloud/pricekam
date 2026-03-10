@@ -1,0 +1,17 @@
+--- Product Table Schema ---
+Column: id, Type: text, Nullable: NO, Default: null
+Column: title, Type: text, Nullable: NO, Default: null
+Column: description, Type: text, Nullable: YES, Default: null
+Column: price, Type: double precision, Nullable: NO, Default: null
+Column: originalPrice, Type: double precision, Nullable: YES, Default: null
+Column: image, Type: text, Nullable: NO, Default: null
+Column: images, Type: ARRAY, Nullable: YES, Default: null
+Column: categoryId, Type: text, Nullable: NO, Default: null
+Column: brand, Type: text, Nullable: NO, Default: null
+Column: ageGroup, Type: text, Nullable: NO, Default: null
+Column: stock, Type: integer, Nullable: NO, Default: 0
+Column: rating, Type: double precision, Nullable: NO, Default: 0
+Column: badge, Type: text, Nullable: YES, Default: null
+Column: isFeatured, Type: boolean, Nullable: NO, Default: false
+Column: createdAt, Type: timestamp without time zone, Nullable: NO, Default: CURRENT_TIMESTAMP
+Column: updatedAt, Type: timestamp without time zone, Nullable: NO, Default: null
