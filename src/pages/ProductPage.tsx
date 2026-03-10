@@ -32,6 +32,15 @@ const ProductPage = () => {
   const { addItem } = useCart();
   const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomPos({ x, y });
+  };
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ['product', id],
@@ -88,10 +97,25 @@ const ProductPage = () => {
           <ChevronLeft className="h-4 w-4" /> BACK TO SHOP
         </Link>
 
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20">
-          <div className="space-y-6">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="aspect-square rounded-[2rem] overflow-hidden bg-muted group shadow-xl border border-border/50">
-              <img src={activeImage || product.image} alt={product.title} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-700" />
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-start">
+          <div className="space-y-6 w-full max-w-[600px] mx-auto lg:mx-0">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative aspect-square rounded-[2rem] overflow-hidden bg-muted group shadow-2xl border border-border/50 cursor-zoom-in"
+              onMouseMove={handleMouseMove}
+              onMouseEnter={() => setIsZoomed(true)}
+              onMouseLeave={() => setIsZoomed(false)}
+            >
+              <img
+                src={activeImage || product.image}
+                alt={product.title}
+                className="w-full h-full object-cover transition-transform duration-200 ease-out"
+                style={{
+                  transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                  transform: isZoomed ? 'scale(2.5)' : 'scale(1)'
+                }}
+              />
             </motion.div>
 
             {allImages.length > 1 && (
@@ -109,7 +133,11 @@ const ProductPage = () => {
             )}
           </div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col py-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col py-2 w-full overflow-hidden"
+          >
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-display font-black tracking-widest text-primary uppercase bg-primary/10 px-3 py-1 rounded-full">{product.brand}</span>
               {product.badge && <span className="text-xs font-display font-black tracking-widest text-secondary uppercase bg-secondary/10 px-3 py-1 rounded-full">{product.badge}</span>}
