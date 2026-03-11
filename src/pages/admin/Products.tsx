@@ -262,7 +262,13 @@ const Products = () => {
                                             </td>
                                             <td className="p-6">
                                                 <div className="flex flex-col">
-                                                    <span className="font-display font-black text-foreground">₹{p.price}</span>
+                                                    <span className="font-display font-black text-foreground">₹{p.price.toFixed(2)}</span>
+                                                    {p.gst > 0 && (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-tighter">Incl. {p.gst}% GST</span>
+                                                            <span className="text-[10px] text-muted-foreground">Base: ₹{(p.price / (1 + p.gst / 100)).toFixed(2)}</span>
+                                                        </div>
+                                                    )}
                                                     {p.originalPrice && <span className="text-[10px] text-muted-foreground line-through">₹{p.originalPrice}</span>}
                                                 </div>
                                             </td>
@@ -402,9 +408,64 @@ const Products = () => {
                                             <input id="extraImagesUpload" type="file" accept="image/*" multiple className="hidden" onChange={handleExtraImagesUpload} disabled={uploadingExtra} />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Price (₹)</label>
-                                        <input name="price" required defaultValue={editingProduct?.price} type="number" step="0.01" placeholder="29.99" className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all placeholder:text-muted-foreground/30" />
+                                    <div className="col-span-2 bg-primary/5 p-6 rounded-[2rem] border-2 border-primary/10 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Base Price (Exclusive of GST)</label>
+                                                <input 
+                                                    id="basePriceInput"
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    placeholder="100.00" 
+                                                    defaultValue={editingProduct ? (editingProduct.price / (1 + (editingProduct.gst || 0) / 100)).toFixed(2) : ""}
+                                                    className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all placeholder:text-muted-foreground/30"
+                                                    onChange={(e) => {
+                                                        const base = parseFloat(e.target.value) || 0;
+                                                        const gst = parseFloat((document.getElementsByName('gst')[0] as HTMLSelectElement).value) || 0;
+                                                        const total = base + (base * gst / 100);
+                                                        (document.getElementsByName('price')[0] as HTMLInputElement).value = total.toFixed(2);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">GST Percentage (%)</label>
+                                                <select 
+                                                    name="gst" 
+                                                    required 
+                                                    defaultValue={editingProduct?.gst || 0} 
+                                                    className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all appearance-none cursor-pointer"
+                                                    onChange={(e) => {
+                                                        const gst = parseFloat(e.target.value) || 0;
+                                                        const base = parseFloat((document.getElementById('basePriceInput') as HTMLInputElement).value) || 0;
+                                                        const total = base + (base * gst / 100);
+                                                        (document.getElementsByName('price')[0] as HTMLInputElement).value = total.toFixed(2);
+                                                    }}
+                                                >
+                                                    <option value="0" className="bg-card">0% (GST Free)</option>
+                                                    <option value="5" className="bg-card">5% GST</option>
+                                                    <option value="12" className="bg-card">12% GST</option>
+                                                    <option value="18" className="bg-card">18% GST</option>
+                                                    <option value="28" className="bg-card">28% GST</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-[10px] font-display font-black text-primary uppercase tracking-widest mb-2 ml-1">Final Price (Inclusive of GST - This will be charged)</label>
+                                            <input 
+                                                name="price" 
+                                                required 
+                                                readOnly
+                                                defaultValue={editingProduct?.price} 
+                                                type="number" 
+                                                step="0.01" 
+                                                placeholder="118.00" 
+                                                className="w-full px-6 py-4 rounded-2xl bg-primary text-white border-2 border-transparent outline-none font-display font-black text-xl placeholder:text-white/30 cursor-not-allowed" 
+                                            />
+                                            <p className="mt-2 text-[9px] font-bold text-primary/60 uppercase tracking-tighter px-1">
+                                                * Final price is calculated as: Base Price + (Base Price × GST / 100)
+                                            </p>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Old Price (Optional)</label>
@@ -427,21 +488,6 @@ const Products = () => {
                                     <div>
                                         <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Stock Quantity</label>
                                         <input name="stock" required defaultValue={editingProduct?.stock} type="number" placeholder="50" className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all placeholder:text-muted-foreground/30" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">GST Value (%)</label>
-                                        <select 
-                                            name="gst" 
-                                            required 
-                                            defaultValue={editingProduct?.gst || 0} 
-                                            className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all appearance-none cursor-pointer"
-                                        >
-                                            <option value="0" className="bg-card">0% (GST Free)</option>
-                                            <option value="5" className="bg-card">5% GST</option>
-                                            <option value="12" className="bg-card">12% GST</option>
-                                            <option value="18" className="bg-card">18% GST</option>
-                                            <option value="28" className="bg-card">28% GST</option>
-                                        </select>
                                     </div>
                                     <div className="col-span-2">
                                         <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Story (Description)</label>

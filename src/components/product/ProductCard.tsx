@@ -19,6 +19,7 @@ export interface Product {
   badge?: string | null;
   description?: string;
   ageGroup?: string;
+  gst?: number;
 }
 
 const ProductCard = ({ product }: { product: Product }) => {
@@ -95,7 +96,10 @@ const ProductCard = ({ product }: { product: Product }) => {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-auto pt-2 gap-3">
           <div className="flex flex-row sm:flex-col items-baseline sm:items-start gap-2 sm:gap-0 shrink-0">
-            <span className="text-xl sm:text-2xl font-display font-black text-primary">₹{product.price}</span>
+            <div className="flex flex-col">
+              <span className="text-xl sm:text-2xl font-display font-black text-primary">₹{product.price}</span>
+              <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-tighter">Incl. GST</span>
+            </div>
             {product.originalPrice && (
               <span className="text-[10px] sm:text-xs text-muted-foreground line-through font-body font-bold opacity-40">₹{product.originalPrice}</span>
             )}
