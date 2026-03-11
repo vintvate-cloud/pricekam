@@ -21,8 +21,6 @@ const ProfilePage = () => {
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
-  const [returnTargetId, setReturnTargetId] = useState<string | null>(null);
-  const [returnReason, setReturnReason] = useState("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -67,24 +65,7 @@ const ProfilePage = () => {
     onError: (err: any) => toast.error(err.message || "Cancellation failed"),
   });
 
-  const returnMutation = useMutation({
-    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
-      const res = await fetch(`${API_URL}/orders/${orderId}/return`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ reason }),
-      });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success("Return request submitted! We'll contact you within 2 business days.");
-      setReturnTargetId(null);
-      setReturnReason("");
-    },
-    onError: (err: any) => toast.error(err.message || "Return request failed"),
-  });
+
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-display text-2xl animate-pulse text-primary">Loading...</div>;
   if (!user) return null;
@@ -92,8 +73,6 @@ const ProfilePage = () => {
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "orders", label: "Orders", icon: Package },
-    { id: "wishlist", label: "Wishlist", icon: Heart },
-    { id: "settings", label: "Settings", icon: Settings },
   ];
 
   const statusColors: any = {
@@ -142,42 +121,7 @@ const ProfilePage = () => {
         )}
       </AnimatePresence>
 
-      {/* Return Request Modal */}
-      <AnimatePresence>
-        {returnTargetId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
-              className="bg-card rounded-3xl p-8 max-w-sm w-full shadow-2xl">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-2xl flex items-center justify-center">
-                  <RotateCcw className="h-5 w-5 text-blue-500" />
-                </div>
-                <h3 className="font-display font-black text-lg">Request Return</h3>
-              </div>
-              <textarea
-                placeholder="Describe the reason for return (e.g. defective, wrong item…)"
-                value={returnReason}
-                onChange={e => setReturnReason(e.target.value)}
-                rows={3}
-                className="w-full p-4 rounded-2xl bg-muted border border-border outline-none text-sm font-body resize-none focus:border-primary/50 mb-4"
-              />
-              <div className="flex gap-3">
-                <button onClick={() => { setReturnTargetId(null); setReturnReason(""); }}
-                  className="flex-1 py-3 rounded-2xl bg-muted text-sm font-display font-black">
-                  Cancel
-                </button>
-                <button
-                  onClick={() => returnMutation.mutate({ orderId: returnTargetId, reason: returnReason })}
-                  disabled={returnMutation.isPending || !returnReason.trim()}
-                  className="flex-1 py-3 rounded-2xl bg-blue-500 text-white text-sm font-display font-black hover:bg-blue-600 disabled:opacity-50">
-                  {returnMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Submit"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       <main className="container mx-auto px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -275,13 +219,7 @@ const ProfilePage = () => {
                           <X className="h-3.5 w-3.5" /> Cancel
                         </button>
                       )}
-                      {order.status === 'DELIVERED' && (
-                        <button
-                          onClick={() => setReturnTargetId(order.id)}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-500 text-xs font-display font-bold hover:bg-blue-500/20 transition-all">
-                          <RotateCcw className="h-3.5 w-3.5" /> Return
-                        </button>
-                      )}
+
                     </div>
                   </div>
                 </div>
@@ -298,27 +236,7 @@ const ProfilePage = () => {
             </div>
           )}
 
-          {activeTab === "wishlist" && (
-            <div className="bg-card rounded-3xl border border-border p-8 text-center">
-              <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <p className="font-body text-muted-foreground">Your wishlist is empty</p>
-            </div>
-          )}
 
-          {activeTab === "settings" && (
-            <div className="bg-card rounded-3xl border border-border p-6 space-y-4">
-              <h2 className="font-display font-bold text-lg text-foreground">Account Settings</h2>
-              {["Email Notifications", "SMS Alerts", "Newsletter"].map((setting) => (
-                <div key={setting} className="flex items-center justify-between p-3 bg-muted rounded-xl">
-                  <span className="text-sm font-body text-foreground">{setting}</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-9 h-5 bg-border rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-card after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
-                  </label>
-                </div>
-              ))}
-            </div>
-          )}
         </motion.div>
       </main>
       <Footer />

@@ -61,12 +61,6 @@ const HeroSection = () => {
                                 </div>
                             ))}
                         </div>
-                        <div>
-                            <p className="font-display font-bold text-foreground">10k+ Happy Kids</p>
-                            <div className="flex text-amber-400">
-                                {"★★★★★".split("").map((s, i) => <span key={i}>{s}</span>)}
-                            </div>
-                        </div>
                     </div>
                 </motion.div>
             </div>

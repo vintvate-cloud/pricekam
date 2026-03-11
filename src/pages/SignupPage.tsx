@@ -32,6 +32,7 @@ const SignupPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"EMAIL" | "OTP" | "SIGNUP">("EMAIL");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const navigate = useNavigate();
 
   const strength = getStrength(password);
@@ -107,6 +108,10 @@ const SignupPage = () => {
 
     if (!name || !password || !confirmPassword) {
       setError("Please fill in all fields");
+      return;
+    }
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms and Conditions");
       return;
     }
     if (!isStrongEnough) {
@@ -311,10 +316,22 @@ const SignupPage = () => {
             </div>
           </div>
 
+          <div className="flex items-start gap-3 py-2 cursor-pointer group" onClick={() => setAgreedToTerms(!agreedToTerms)}>
+            <div className={`mt-0.5 w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${agreedToTerms ? 'bg-primary border-primary' : 'border-muted-foreground/30 group-hover:border-primary/50'}`}>
+              {agreedToTerms && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
+            </div>
+            <p className="text-xs font-body text-muted-foreground leading-relaxed">
+              I agree to Pricekam's{" "}
+              <Link to="/terms" onClick={(e) => e.stopPropagation()} className="text-primary font-bold hover:underline">Terms of Service</Link>
+              {" "}and{" "}
+              <Link to="/privacy" onClick={(e) => e.stopPropagation()} className="text-primary font-bold hover:underline">Privacy Policy</Link>
+            </p>
+          </div>
+
           <button
             type="submit"
-            disabled={isLoading || !isStrongEnough || password !== confirmPassword}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-display font-semibold text-base hover:opacity-90 transition-all shadow-lg"
+            disabled={isLoading || !isStrongEnough || password !== confirmPassword || !agreedToTerms}
+            className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-display font-semibold text-base hover:opacity-90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:shadow-none"
           >
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Complete Registration"}
           </button>

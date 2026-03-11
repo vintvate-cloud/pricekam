@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, ShoppingCart, User, Menu, X, Moon, Sun, LogIn } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, X, Moon, Sun, LogIn, ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +15,7 @@ const Header = () => {
   const { user, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -133,11 +134,41 @@ const Header = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-2xl bg-muted text-sm font-body outline-none" />
               </form>
-              {navItems.map((item) => (
+              
+              {staticNavItems.map((item) => (
                 <Link key={item.label} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-display font-bold text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-2xl transition-all">
                   {item.label}
                 </Link>
               ))}
+
+              {dynamicNavItems.length > 0 && (
+                <div className="space-y-1">
+                  <button 
+                    onClick={() => setCategoriesOpen(!categoriesOpen)} 
+                    className="w-full flex items-center justify-between px-4 py-3 text-base font-display font-bold text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-2xl transition-all"
+                  >
+                    Categories
+                    <ChevronDown className={`h-5 w-5 transition-transform ${categoriesOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  <AnimatePresence>
+                    {categoriesOpen && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }} 
+                        animate={{ height: "auto", opacity: 1 }} 
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden pl-4 space-y-1"
+                      >
+                        {dynamicNavItems.map((item) => (
+                          <Link key={item.label} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2.5 text-sm font-display font-bold text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-xl transition-all">
+                            {item.label}
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
               {user ? (
                 user.role === 'ADMIN' ? (
                   <Link to="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-display font-bold text-primary bg-primary/5 rounded-2xl transition-all">

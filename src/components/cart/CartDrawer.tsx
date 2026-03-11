@@ -74,7 +74,22 @@ const CartDrawer = () => {
                     <span className="font-body font-semibold text-card-foreground">Total</span>
                     <span className="text-2xl font-display font-bold text-primary">₹{total.toFixed(2)}</span>
                   </div>
-                  <Link to="/checkout" onClick={() => setIsOpen(false)} className="block w-full py-3.5 bg-primary text-primary-foreground rounded-2xl font-display font-semibold text-lg hover:opacity-90 transition-opacity text-center">
+                  {total < 500 && (
+                    <p className="text-xs text-orange-500 font-body text-center bg-orange-500/10 py-2 rounded-xl">
+                      Minimum order value is ₹500. Add ₹{(500 - total).toFixed(2)} more to checkout.
+                    </p>
+                  )}
+                  <Link 
+                    to={total >= 500 ? "/checkout" : "#"} 
+                    onClick={(e) => {
+                      if (total < 500) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setIsOpen(false);
+                    }} 
+                    className={`block w-full py-3.5 rounded-2xl font-display font-semibold text-lg transition-all text-center ${total >= 500 ? "bg-primary text-primary-foreground hover:opacity-90" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"}`}
+                  >
                     Checkout
                   </Link>
                 </div>

@@ -11,13 +11,6 @@ const values = [
   { icon: Award, title: "Quality First", desc: "Premium quality products that last through years of play." },
 ];
 
-const team = [
-  { name: "Priya Sharma", role: "Founder & CEO", emoji: "👩‍💼" },
-  { name: "Rahul Patel", role: "Head of Products", emoji: "👨‍💻" },
-  { name: "Anita Desai", role: "Creative Director", emoji: "🎨" },
-  { name: "Vikram Singh", role: "Operations Lead", emoji: "📦" },
-];
-
 const AboutPage = () => (
   <div className="min-h-screen bg-background">
     <Header />
@@ -28,9 +21,9 @@ const AboutPage = () => (
         <div className="container mx-auto px-4 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <span className="text-5xl mb-4 block">🧸</span>
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">About ToyBox</h1>
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">About Pricekam</h1>
             <p className="text-lg text-muted-foreground font-body max-w-2xl mx-auto">
-              We believe every child deserves the magic of play. Since 2024, we've been bringing joy to families with hand-picked toys, stylish kids' clothing, and gifts that spark imagination.
+              We believe every child deserves the magic of play. We've been bringing joy to families with hand-picked toys, stylish kids' clothing, and gifts that spark imagination.
             </p>
           </motion.div>
         </div>
@@ -48,39 +41,6 @@ const AboutPage = () => (
               <h3 className="font-display font-bold text-foreground mb-2">{v.title}</h3>
               <p className="text-sm text-muted-foreground font-body">{v.desc}</p>
             </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* Team */}
-      <section className="bg-muted/50 py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-display font-bold text-foreground text-center mb-10">Meet Our Team</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-            {team.map((t) => (
-              <div key={t.name} className="bg-card rounded-2xl border border-border p-5 text-center">
-                <span className="text-4xl block mb-3">{t.emoji}</span>
-                <h3 className="font-display font-bold text-sm text-foreground">{t.name}</h3>
-                <p className="text-xs text-muted-foreground font-body">{t.role}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {[
-            { value: "10K+", label: "Happy Families" },
-            { value: "500+", label: "Products" },
-            { value: "50+", label: "Brands" },
-            { value: "4.8★", label: "Avg Rating" },
-          ].map((s) => (
-            <div key={s.label}>
-              <p className="text-3xl font-display font-bold text-primary">{s.value}</p>
-              <p className="text-sm text-muted-foreground font-body mt-1">{s.label}</p>
-            </div>
           ))}
         </div>
       </section>
