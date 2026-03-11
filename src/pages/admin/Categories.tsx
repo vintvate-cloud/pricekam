@@ -93,13 +93,13 @@ const Categories = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                     <div>
                         <h1 className="text-4xl font-display font-black text-foreground tracking-tight mb-2 text-center md:text-left">Toy Kingdoms</h1>
-                        <p className="text-muted-foreground font-body font-medium text-center md:text-left">Organize your magical collection into realms 🏰</p>
+                        <p className="text-muted-foreground font-body font-medium text-center md:text-left">Organize your magical collection into Categorys 🏰</p>
                     </div>
                     <button
                         onClick={() => { setEditingCategory(null); setShowModal(true); }}
                         className="flex items-center justify-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-3xl font-display font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/30"
                     >
-                        <Plus className="h-5 w-5" /> Build New Realm
+                        <Plus className="h-5 w-5" /> Build New Category
                     </button>
                 </div>
 
@@ -154,7 +154,7 @@ const Categories = () => {
                         {filteredCategories.length === 0 && (
                             <div className="col-span-full p-20 text-center">
                                 <div className="w-20 h-20 bg-accent rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-3xl">🏜️</div>
-                                <h3 className="text-xl font-display font-black text-foreground mb-2">No Realms Found</h3>
+                                <h3 className="text-xl font-display font-black text-foreground mb-2">No Categorys Found</h3>
                                 <p className="text-muted-foreground font-body max-w-xs mx-auto">Build a new kingdom to start organizing your magical collection!</p>
                             </div>
                         )}
@@ -181,7 +181,7 @@ const Categories = () => {
                         >
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h2 className="text-3xl font-display font-black text-foreground tracking-tight">{editingCategory ? "Refine Realm ✨" : "New Realm 🏰"}</h2>
+                                    <h2 className="text-3xl font-display font-black text-foreground tracking-tight">{editingCategory ? "Refine Category ✨" : "New Category 🏰"}</h2>
                                     <p className="text-muted-foreground font-body text-sm font-medium text-wrap">Give your toys a beautiful home.</p>
                                 </div>
                                 <button onClick={handleCloseModal} className="p-4 bg-accent rounded-2xl hover:bg-red-400/10 hover:text-red-400 transition-all"><X className="h-6 w-6" /></button>
@@ -196,20 +196,20 @@ const Categories = () => {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="flex items-center gap-2 text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">
-                                            <Type className="h-3 w-3" /> Realm Name
+                                            <Type className="h-3 w-3" /> Category Name
                                         </label>
                                         <input name="name" required defaultValue={editingCategory?.name} type="text" placeholder="e.g. Action Heroes" className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all placeholder:text-muted-foreground/30" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="flex items-center gap-2 text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">
-                                                <LayoutGrid className="h-3 w-3" /> Realm Emoji
+                                                <LayoutGrid className="h-3 w-3" /> Category Emoji
                                             </label>
                                             <input name="icon" defaultValue={editingCategory?.icon} type="text" placeholder="🚀" className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all text-center text-xl" />
                                         </div>
                                         <div>
                                             <label className="flex items-center gap-2 text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">
-                                                <Palette className="h-3 w-3" /> Realm Aura
+                                                <Palette className="h-3 w-3" /> Category Aura
                                             </label>
                                             <input name="color" defaultValue={editingCategory?.color || "#ff0000"} type="color" className="w-full h-[60px] p-1 rounded-2xl bg-background border-2 border-transparent hover:border-primary/20 cursor-pointer overflow-hidden" />
                                         </div>
@@ -221,7 +221,7 @@ const Categories = () => {
                                     type="submit"
                                     className="w-full py-5 bg-primary text-white rounded-[2rem] font-display font-black text-xl hover:scale-[1.01] active:scale-[0.99] transition-all shadow-2xl shadow-primary/30 flex items-center justify-center gap-2"
                                 >
-                                    {upsertMutation.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="h-6 w-6" /> {editingCategory ? "CAST REFINEMENT ✨" : "MANIFEST REALM 🏰"}</>}
+                                    {upsertMutation.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="h-6 w-6" /> {editingCategory ? "CAST REFINEMENT ✨" : "MANIFEST Category 🏰"}</>}
                                 </button>
                             </form>
                         </motion.div>

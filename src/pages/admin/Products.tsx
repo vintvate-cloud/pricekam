@@ -281,10 +281,28 @@ const Products = () => {
                                                 </div>
                                             </td>
                                             <td className="p-6">
-                                                <div className="flex items-center justify-end gap-2 translate-x-2 group-hover:translate-x-0 transition-transform">
-                                                    <button onClick={() => window.open(`/product/${p.id}`, '_blank')} className="p-3 rounded-2xl bg-accent hover:bg-card hover:text-blue-500 hover:shadow-md transition-all text-muted-foreground/60"><Eye className="h-4 w-4" /></button>
-                                                    <button onClick={() => handleEdit(p)} className="p-3 rounded-2xl bg-accent hover:bg-card hover:text-primary hover:shadow-md transition-all text-muted-foreground/60"><Edit className="h-4 w-4" /></button>
-                                                    <button onClick={() => deleteMutation.mutate(p.id)} className="p-3 rounded-2xl bg-accent hover:bg-card hover:text-red-500 hover:shadow-md transition-all text-muted-foreground/60"><Trash2 className="h-4 w-4" /></button>
+                                                <div className="flex items-center justify-end gap-3 translate-x-2 group-hover:translate-x-0 transition-all duration-300">
+                                                    <button 
+                                                        onClick={() => window.open(`/product/${p.id}`, '_blank')} 
+                                                        title="View Product"
+                                                        className="p-3 rounded-2xl bg-blue-500/10 text-blue-600 hover:bg-blue-500 hover:text-white hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-90"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleEdit(p)} 
+                                                        title="Edit Product"
+                                                        className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 hover:bg-amber-500 hover:text-white hover:shadow-lg hover:shadow-amber-500/30 transition-all active:scale-90"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => deleteMutation.mutate(p.id)} 
+                                                        title="Delete Product"
+                                                        className="p-3 rounded-2xl bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-500/30 transition-all active:scale-90"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
