@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShoppingBag, Package, User, Calendar, Loader2, CheckCircle2, Truck, Clock, AlertCircle, ChevronRight } from "lucide-react";
+import { ShoppingBag, Package, User, Calendar, Loader2, CheckCircle2, Truck, Clock, AlertCircle, ChevronRight, Download, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminLayout from "@/components/admin/AdminLayout";
+import OrderInvoice from "@/components/orders/OrderInvoice";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -31,6 +32,8 @@ interface Order {
     paymentMethod?: string | null;
     advancePaid?: number | null;
     deliveryCharge?: number | null;
+    razorpayOrderId?: string | null;
+    razorpayPaymentId?: string | null;
 }
 
 
@@ -46,6 +49,7 @@ const statusConfigs = {
 const Orders = () => {
     const queryClient = useQueryClient();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
 
     const { data: orders = [], isLoading } = useQuery<Order[]>({
         queryKey: ['admin-orders'],
@@ -160,7 +164,16 @@ const Orders = () => {
                                     className="bg-card rounded-[2.5rem] border border-border p-8 shadow-2xl shadow-primary/5 h-fit sticky top-10"
                                 >
                                     <div className="flex items-center justify-between mb-8">
-                                        <h2 className="text-2xl font-display font-black text-foreground">Order Detail</h2>
+                                        <div className="flex flex-col">
+                                            <h2 className="text-2xl font-display font-black text-foreground">Order Detail</h2>
+                                            <button
+                                                onClick={() => setInvoiceOrder(selectedOrder)}
+                                                className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors mt-1"
+                                            >
+                                                <FileText className="h-3.5 w-3.5" />
+                                                <span className="text-[10px] font-display font-black uppercase tracking-widest">Download Invoice</span>
+                                            </button>
+                                        </div>
                                         <button onClick={() => setSelectedOrder(null)} className="p-3 bg-accent rounded-xl hover:bg-accent/80 transition-colors"><ChevronRight className="h-5 w-5" /></button>
                                     </div>
 
@@ -297,6 +310,15 @@ const Orders = () => {
                     </div>
                 </div>
             </div>
+
+            <AnimatePresence>
+                {invoiceOrder && (
+                    <OrderInvoice
+                        order={invoiceOrder}
+                        onClose={() => setInvoiceOrder(null)}
+                    />
+                )}
+            </AnimatePresence>
         </AdminLayout>
     );
 };

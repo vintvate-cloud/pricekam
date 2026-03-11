@@ -65,10 +65,19 @@ const ShopPage = () => {
       if (!res.ok) throw new Error('Failed to fetch products');
       return res.json();
     },
-    staleTime: 60_000 // match server cache TTL
+    staleTime: 60_000
   });
 
-  const allCategories = useMemo(() => ["All", ...new Set(products.map((p) => p.category.name))], [products]);
+  const { data: categories = [] } = useQuery<any[]>({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/categories`);
+      if (!res.ok) throw new Error('Failed to fetch categories');
+      return res.json();
+    }
+  });
+
+  const allCategories = useMemo(() => ["All", ...categories.map((c) => c.name)], [categories]);
   const allBrands = useMemo(() => [...new Set(products.map((p) => p.brand))], [products]);
   const ageGroups = ["0-2", "2-4", "4-6", "6-8", "8+"];
   const maxPrice = useMemo(() => Math.max(10000, ...products.map(p => p.price)), [products]);

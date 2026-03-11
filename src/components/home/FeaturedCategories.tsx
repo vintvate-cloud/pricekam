@@ -44,7 +44,7 @@ const FeaturedCategories = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-          {categories.slice(0, 4).map((cat, i) => (
+          {categories.map((cat, i) => (
             <motion.div
               key={cat.id}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -53,13 +53,22 @@ const FeaturedCategories = () => {
               transition={{ delay: i * 0.1 }}
             >
               <Link
-                to={`/shop?category=${cat.name}`}
-                className={`block p-8 h-full rounded-3xl border transition-all active:scale-[0.98] ${colorMap[cat.color || ""] || "bg-muted hover:bg-muted/80 border-border"}`}
+                to={`/shop?category=${encodeURIComponent(cat.name)}`}
+                className="block p-8 h-full rounded-[2.5rem] border transition-all active:scale-[0.98] group hover:shadow-xl hover:-translate-y-1"
+                style={{ 
+                  backgroundColor: `${cat.color}15`, 
+                  borderColor: `${cat.color}30` 
+                }}
               >
-                <span className="text-5xl mb-4 block drop-shadow-sm">{cat.icon || "🧸"}</span>
-                <h3 className="font-display font-bold text-foreground text-xl mb-1">{cat.name}</h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground font-body font-semibold group">
-                  Explore Now
+                <div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl mb-6 shadow-inner transition-transform group-hover:scale-110 group-hover:rotate-6"
+                  style={{ backgroundColor: `${cat.color}20` }}
+                >
+                  {cat.icon || "🧸"}
+                </div>
+                <h3 className="font-display font-black text-foreground text-xl mb-1 uppercase tracking-tight">{cat.name}</h3>
+                <div className="flex items-center gap-2 text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mt-2">
+                  EXPLORE {cat.name}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
               </Link>

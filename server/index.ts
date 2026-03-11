@@ -1162,10 +1162,16 @@ app.get('/api/categories', async (req, res) => {
 app.post('/api/categories', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
     const { name, icon, color } = req.body;
     try {
-        const { data: category, error } = await db.from('Category').insert({ name, icon, color }).select().single();
+        const { data: category, error } = await db.from('Category').insert({ 
+            id: crypto.randomUUID(),
+            name, 
+            icon, 
+            color 
+        }).select().single();
         if (error) throw error;
         res.status(201).json(category);
     } catch (error) {
+        console.error('Category Creation Error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });
