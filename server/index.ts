@@ -56,12 +56,6 @@ function sanitize(val: any): string {
     return val.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-console.log('--- Env Status ---');
-console.log('PORT:', process.env.PORT);
-console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
-console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-console.log('------------------');
-
 const app = express();
 // Trust proxy is required for Vercel/Express rate limiting to work
 app.set('trust proxy', 1);
@@ -203,7 +197,7 @@ app.get('/api/health', async (req, res) => {
 
     // Log masked URL for debugging (hiding password)
     const maskedUrl = process.env.DATABASE_URL?.replace(/:([^:@]+)@/, ':****@');
-    console.log('Testing DB Connection via Supabase Client');
+
 
     res.json({
         status: 'UP',
@@ -866,7 +860,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 
         // 8. Create order in DB + decrement stock
         const orderId = crypto.randomUUID();
-        console.log(`Step 8: Creating order ${orderId} in DB...`);
+
 
         const { data: order, error: orderError } = await db.from('Order').insert({
             id: orderId,
@@ -893,7 +887,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
             throw orderError || new Error('Failed to create order');
         }
 
-        console.log('Step 9: Creating order items...');
+
         // Second, create order items
         const { error: itemsError } = await db.from('OrderItem').insert(
             verifiedItems.map(item => ({
@@ -919,7 +913,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
             }
         }
 
-        console.log('Step 8: Fetching full order details for response and invoice...');
+
         // Fetch full order for response (with nested items)
         const { data: fullOrder, error: fullOrderError } = await db.from('Order')
             .select('*, items:OrderItem(*, product:Product(*))')
@@ -931,7 +925,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
             // We don't throw here to avoid failing a successful payment, but we should log it
         }
 
-        console.log('Step 9: Sending invoice email...');
+
         // 4. Send invoice email (non-blocking)
         try {
             if (fullOrder) {
@@ -1085,7 +1079,6 @@ app.post('/api/orders/:id/return', authenticateToken, async (req: any, res) => {
             return res.status(400).json({ message: 'Only delivered orders can be returned' });
         }
         // Mark as RETURN_REQUESTED — stored as a special CANCELLED variant with a note
-        console.log(`[Return Request] Order ${order.id} — Reason: ${reason}`);
         res.json({ message: 'Return request submitted. Our team will contact you within 2 business days.', orderId: order.id, reason });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });

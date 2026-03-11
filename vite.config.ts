@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
     allowedHosts: [
-      "67a1-2401-4900-88ba-503e-d155-f248-6536-dd55.ngrok-free.app"
+      ".ngrok-free.app"
     ],
     proxy: {
       "/api": {

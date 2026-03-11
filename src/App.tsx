@@ -1,4 +1,3 @@
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -41,7 +40,6 @@ const App = () => (
       <ThemeProvider>
         <TooltipProvider>
           <CartProvider>
-            <Toaster />
             <Sonner />
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <ScrollToTop />
@@ -49,14 +47,14 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/shop" element={<ShopPage />} />
                 <Route path="/product/:id" element={<ProductPage />} />
-
-                {/* Admin Routes - Protected and Admin Only */}
+                
+                {/* Admin Routes */}
                 <Route path="/admin" element={<AdminLoginPage />} />
-                <Route path="/admin/dashboard" element={<ProtectedRoute adminOnly><AdminDashboardPage /></ProtectedRoute>} />
-                <Route path="/admin/products" element={<ProtectedRoute adminOnly><AdminProductsPage /></ProtectedRoute>} />
-                <Route path="/admin/orders" element={<ProtectedRoute adminOnly><AdminOrdersPage /></ProtectedRoute>} />
-                <Route path="/admin/customers" element={<ProtectedRoute adminOnly><AdminCustomersPage /></ProtectedRoute>} />
-                <Route path="/admin/categories" element={<ProtectedRoute adminOnly><AdminCategoriesPage /></ProtectedRoute>} />
+                <Route path="/admin/dashboard" element={<ProtectedRoute requireAdmin><AdminDashboardPage /></ProtectedRoute>} />
+                <Route path="/admin/products" element={<ProtectedRoute requireAdmin><AdminProductsPage /></ProtectedRoute>} />
+                <Route path="/admin/orders" element={<ProtectedRoute requireAdmin><AdminOrdersPage /></ProtectedRoute>} />
+                <Route path="/admin/customers" element={<ProtectedRoute requireAdmin><AdminCustomersPage /></ProtectedRoute>} />
+                <Route path="/admin/categories" element={<ProtectedRoute requireAdmin><AdminCategoriesPage /></ProtectedRoute>} />
 
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
@@ -68,7 +66,7 @@ const App = () => (
                 <Route path="/set-password" element={<SetPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-                {/* Protected Customer Routes */}
+                {/* Protected User Routes */}
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
                 <Route path="/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />
