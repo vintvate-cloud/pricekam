@@ -15,3 +15,6 @@ Column: badge, Type: text, Nullable: YES, Default: null
 Column: isFeatured, Type: boolean, Nullable: NO, Default: false
 Column: createdAt, Type: timestamp without time zone, Nullable: NO, Default: CURRENT_TIMESTAMP
 Column: updatedAt, Type: timestamp without time zone, Nullable: NO, Default: null
+Column: sizes, Type: ARRAY, Nullable: YES, Default: '{}'::text[]
+Column: sizeChart, Type: text, Nullable: YES, Default: null
+Column: sizeChartData, Type: jsonb, Nullable: YES, Default: null

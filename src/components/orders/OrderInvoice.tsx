@@ -1,12 +1,14 @@
 import { motion } from "framer-motion";
-import { Download, X, Printer, Mail, Share2, ShieldCheck, IndianRupee } from "lucide-react";
+import { Download, X, ShieldCheck, IndianRupee } from "lucide-react";
 import { format } from "date-fns";
+import { createPortal } from "react-dom";
 
 interface OrderItem {
     id: string;
     product: { title: string; image: string; price: number };
     quantity: number;
     price: number;
+    gst?: number | null;
     selectedSize?: string | null;
 }
 
@@ -38,10 +40,10 @@ const OrderInvoice = ({ order, onClose }: OrderInvoiceProps) => {
         const originalTitle = document.title;
         const customerName = (order.customerName || "Order").replace(/[^a-z0-9]/gi, '_');
         const orderId = order.id.slice(-8).toUpperCase();
-        
+
         document.title = `Invoice_${customerName}_${orderId}`;
         window.print();
-        
+
         // Restore title after a short delay to ensure print dialog picks it up
         setTimeout(() => {
             document.title = originalTitle;
@@ -53,60 +55,74 @@ const OrderInvoice = ({ order, onClose }: OrderInvoiceProps) => {
     const isCoD = order.paymentMethod === 'cod';
     const advancePaid = order.advancePaid ?? null;
 
-    return (
+    return createPortal(
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 bg-background/80 backdrop-blur-xl print:bg-white print:p-0 print:static invoice-print-wrapper"
+            className="fixed inset-0 z-[99999] flex items-center justify-center p-0 md:p-4 bg-background/80 backdrop-blur-xl print:bg-white print:p-0 print:static invoice-print-wrapper"
         >
             <style>
                 {`
                     @media print {
                         @page {
                             size: portrait;
-                            margin: 10mm;
+                            margin: 0;
                         }
                         
+                        /* COMPLETELY HIDE THE APP ROOT */
+                        #root {
+                            display: none !important;
+                            height: 0 !important;
+                            overflow: hidden !important;
+                        }
+
+                        html, body {
+                            height: auto !important;
+                            overflow: visible !important;
+                            background: white !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+
                         body * {
                             visibility: hidden !important;
                         }
 
                         .invoice-print-wrapper, 
-                        .invoice-print-wrapper *,
-                        .invoice-card,
-                        .invoice-card * {
+                        .invoice-print-wrapper * {
                             visibility: visible !important;
                         }
 
+                        /* Force the wrapper to be the only thing the browser sees */
                         .invoice-print-wrapper {
-                            position: absolute !important;
-                            left: 0 !important;
-                            top: 0 !important;
-                            width: 100% !important;
-                            height: auto !important;
+                            position: static !important;
                             display: block !important;
+                            width: 100% !important;
+                            min-height: 100vh !important;
                             background: white !important;
-                            padding: 0 !important;
+                            padding: 15mm !important;
                             margin: 0 !important;
+                            overflow: visible !important;
                         }
 
                         .invoice-card {
                             width: 100% !important;
                             max-width: 100% !important;
                             height: auto !important;
-                            position: static !important;
                             border: none !important;
                             box-shadow: none !important;
                             background: white !important;
                             border-radius: 0 !important;
                             margin: 0 !important;
+                            padding: 0 !important;
                         }
 
                         #invoice-content {
                             padding: 0 !important;
                             overflow: visible !important;
                             height: auto !important;
+                            display: block !important;
                         }
 
                         .print-image-visible {
@@ -138,8 +154,8 @@ const OrderInvoice = ({ order, onClose }: OrderInvoiceProps) => {
                         <h2 className="font-display font-black text-sm uppercase tracking-widest">Digital Invoice</h2>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button 
-                            onClick={handlePrint} 
+                        <button
+                            onClick={handlePrint}
                             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
                         >
                             <Download className="h-4 w-4" />
@@ -162,15 +178,15 @@ const OrderInvoice = ({ order, onClose }: OrderInvoiceProps) => {
                                 <h1 className="text-3xl font-display font-black tracking-tight text-slate-900">PRICEKAM</h1>
                             </div>
                             <div className="space-y-1 text-sm font-body text-slate-500">
-                                <p>Magic Warehouse Avenue, Suite 777</p>
-                                <p>Imagination City, TS 12345</p>
+                                <p>22, near State Bank Of India</p>
+                                <p>Awadhpuri, Bhopal, MP 462022</p>
                                 <p>support@pricekam.com</p>
                                 <p>+91 74897 81720</p>
                             </div>
                         </div>
 
                         <div className="text-left md:text-right relative">
-                            <h2 className="text-7xl font-display font-black text-slate-100 mb-4 print:text-6xl print:mb-2 text-nowrap uppercase tracking-tighter">INVOICE</h2>
+                            <h2 className="text-7xl font-display font-black text-slate-900/5 mb-4 print:text-6xl print:text-black print:mb-2 text-nowrap uppercase tracking-tighter">INVOICE</h2>
                             <div className="space-y-2 print:space-y-1">
                                 <p className="text-[10px] font-display font-black text-slate-400 uppercase tracking-widest">Order Reference</p>
                                 <p className="text-xl font-display font-black text-primary">#{order.id.slice(-12).toUpperCase()}</p>
@@ -251,6 +267,35 @@ const OrderInvoice = ({ order, onClose }: OrderInvoiceProps) => {
                                 <span>Subtotal</span>
                                 <span className="font-bold">₹{subtotal.toFixed(2)}</span>
                             </div>
+                            
+                            {/* GST Breakdown */}
+                            {order.items.some(item => item.gst && item.gst > 0) && (
+                                <div className="space-y-1 pt-2 border-t border-slate-100 mt-2">
+                                    <p className="text-[10px] font-display font-black text-slate-400 uppercase tracking-widest mb-1">Tax Breakdown (Inclusive)</p>
+                                    {Array.from(new Set(order.items.map(i => i.gst || 0).filter(g => g > 0))).sort((a, b) => a - b).map(rate => {
+                                        const itemsAtRate = order.items.filter(i => (i.gst || 0) === rate);
+                                        const amountAtRate = itemsAtRate.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+                                        const taxableAmount = amountAtRate / (1 + rate / 100);
+                                        const gstAmount = amountAtRate - taxableAmount;
+                                        return (
+                                            <div key={rate} className="flex justify-between items-center text-[10px] font-body text-slate-400">
+                                                <span>GST ({rate}%)</span>
+                                                <span>₹{gstAmount.toFixed(2)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="flex justify-between items-center text-[10px] font-display font-bold text-slate-500 pt-1">
+                                        <span>Total GST</span>
+                                        <span>₹{order.items.reduce((acc, i) => {
+                                            const rate = i.gst || 0;
+                                            const amount = i.price * i.quantity;
+                                            const taxable = amount / (1 + rate / 100);
+                                            return acc + (amount - taxable);
+                                        }, 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex justify-between items-center text-sm font-body text-slate-500">
                                 <span>Delivery</span>
                                 <span className={`font-bold ${delivery === 0 ? 'text-emerald-500' : ''}`}>{delivery === 0 ? 'FREE ✓' : `₹${delivery.toFixed(2)}`}</span>
@@ -284,7 +329,8 @@ const OrderInvoice = ({ order, onClose }: OrderInvoiceProps) => {
                     </div>
                 </div>
             </motion.div>
-        </motion.div>
+        </motion.div>,
+        document.body
     );
 };
 

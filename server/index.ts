@@ -694,7 +694,7 @@ app.post('/api/payment/create-order', authenticateToken, async (req: any, res) =
 
         // Validate stock and compute subtotal from DB prices
         let subtotal = 0;
-        const validatedItems: { productId: string; quantity: number; price: number; selectedSize?: string }[] = [];
+        const validatedItems: { productId: string; quantity: number; price: number; gst: number; selectedSize?: string }[] = [];
         for (const cartItem of items) {
             const product = products.find((p: any) => p.id === cartItem.productId);
             if (!product) return res.status(400).json({ message: `Product ${cartItem.productId} not found` });
@@ -708,6 +708,7 @@ app.post('/api/payment/create-order', authenticateToken, async (req: any, res) =
                 productId: product.id, 
                 quantity: qty, 
                 price: product.price,
+                gst: product.gst || 0,
                 selectedSize: cartItem.selectedSize 
             });
         }
@@ -816,7 +817,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
         // 4. Re-fetch REAL prices from DB — never trust client-supplied prices
         const productIds = items.map((i: any) => i.productId);
         const { data: products, error: pError } = await db.from('Product')
-            .select('id, price, stock, title')
+            .select('id, price, gst, stock, title')
             .in('id', productIds);
 
         if (pError || !products || products.length !== productIds.length) {
@@ -825,7 +826,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
 
         // 5. Validate stock and build verified items list
         let subtotal = 0;
-        const verifiedItems: { productId: string; quantity: number; price: number; selectedSize?: string }[] = [];
+        const verifiedItems: { productId: string; quantity: number; price: number; gst: number; selectedSize?: string }[] = [];
         for (const cartItem of items) {
             const product = products.find((p: any) => p.id === cartItem.productId);
             if (!product) return res.status(400).json({ message: `Product not found: ${cartItem.productId}` });
@@ -839,6 +840,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
                 productId: product.id, 
                 quantity: qty, 
                 price: product.price,
+                gst: product.gst || 0,
                 selectedSize: cartItem.selectedSize
             });
         }
@@ -900,6 +902,7 @@ app.post('/api/payment/verify', authenticateToken, async (req: any, res) => {
                 productId: item.productId,
                 quantity: item.quantity,
                 price: item.price,
+                gst: item.gst || 0,
                 selectedSize: item.selectedSize
             }))
         );
@@ -1211,7 +1214,7 @@ app.delete('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), 
 // --- ADMIN PRODUCT ACTIONS ---
 
 app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
-    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData } = req.body;
+    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData, gst } = req.body;
     try {
         const now = new Date().toISOString();
         const { data: product, error } = await db.from('Product').insert({
@@ -1220,6 +1223,7 @@ app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (r
             description, 
             price: parseFloat(price),
             originalPrice: originalPrice ? parseFloat(originalPrice) : null,
+            gst: parseFloat(gst) || 0,
             image,
             images: Array.isArray(images) ? images : [],
             categoryId, 
@@ -1248,7 +1252,7 @@ app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (r
 });
 
 app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
-    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData } = req.body;
+    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData, gst } = req.body;
     try {
         const { data: product, error } = await db.from('Product')
             .update({
@@ -1256,6 +1260,7 @@ app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async
                 description, 
                 price: parseFloat(price),
                 originalPrice: originalPrice ? parseFloat(originalPrice) : null,
+                gst: parseFloat(gst) || 0,
                 image,
                 images: Array.isArray(images) ? images : [],
                 categoryId, 

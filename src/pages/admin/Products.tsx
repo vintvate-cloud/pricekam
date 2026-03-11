@@ -22,8 +22,7 @@ interface Product {
     rating: number;
     isFeatured: boolean;
     sizes: string[];
-    sizeChart: string | null;
-    sizeChartData: { headers: string[], rows: string[][] } | null;
+    gst: number;
 }
 
 interface Category {
@@ -42,9 +41,8 @@ const Products = () => {
     const [additionalImages, setAdditionalImages] = useState<string[]>([]);
     const [uploadingExtra, setUploadingExtra] = useState(false);
     
-    // Size & Size Chart States
+    // Size States
     const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-    const [chartData, setChartData] = useState<{ headers: string[], rows: string[][] }>({ headers: ["Size", "Chest (in)"], rows: [["S", ""], ["M", ""]] });
 
     const queryClient = useQueryClient();
 
@@ -176,7 +174,6 @@ const Products = () => {
         setPreviewUrl(product.image);
         setAdditionalImages(product.images || []);
         setSelectedSizes(product.sizes || []);
-        setChartData(product.sizeChartData || { headers: ["Size", "Chest (in)"], rows: [["S", ""], ["M", ""]] });
         setShowModal(true);
     };
 
@@ -186,7 +183,6 @@ const Products = () => {
         setPreviewUrl(null);
         setAdditionalImages([]);
         setSelectedSizes([]);
-        setChartData({ headers: ["Size", "Chest (in)"], rows: [["S", ""], ["M", ""]] });
         setUploading(false);
         setUploadingExtra(false);
     };
@@ -338,10 +334,9 @@ const Products = () => {
                                     price: parseFloat(entries.price as string),
                                     originalPrice: entries.originalPrice ? parseFloat(entries.originalPrice as string) : null,
                                     stock: parseInt(entries.stock as string) || 0,
+                                    gst: parseFloat(entries.gst as string) || 0,
                                     isFeatured: formData.get("isFeatured") === "on",
                                     sizes: selectedSizes,
-                                    sizeChart: entries.sizeChart as string,
-                                    sizeChartData: chartData
                                 };
 
                                 upsertMutation.mutate(data);
@@ -434,6 +429,21 @@ const Products = () => {
                                         <input name="stock" required defaultValue={editingProduct?.stock} type="number" placeholder="50" className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all placeholder:text-muted-foreground/30" />
                                     </div>
                                     <div className="col-span-2">
+                                        <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">GST Value (%)</label>
+                                        <select 
+                                            name="gst" 
+                                            required 
+                                            defaultValue={editingProduct?.gst || 0} 
+                                            className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all appearance-none cursor-pointer"
+                                        >
+                                            <option value="0" className="bg-card">0% (GST Free)</option>
+                                            <option value="5" className="bg-card">5% GST</option>
+                                            <option value="12" className="bg-card">12% GST</option>
+                                            <option value="18" className="bg-card">18% GST</option>
+                                            <option value="28" className="bg-card">28% GST</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2">
                                         <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Story (Description)</label>
                                         <textarea name="description" required defaultValue={editingProduct?.description} rows={3} placeholder="Tell the magic about this toy..." className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-body font-medium text-foreground transition-all resize-none placeholder:text-muted-foreground/30" />
                                     </div>
@@ -449,7 +459,12 @@ const Products = () => {
                                         
                                         {/* Quick Add Presets */}
                                         <div className="flex flex-wrap gap-2 mb-4">
-                                            {["S", "M", "L", "XL", "XXL", "Free Size"].map(size => (
+                                            {[
+                                                "0-3m", "3-6m", "6-12m", 
+                                                "1-2y", "2-3y", "3-4y", "4-5y", "5-6y", "6-7y", "7-8y", "8-9y", "9-10y", 
+                                                "10-11y", "11-12y", "12-13y", "13-14y", "14-15y",
+                                                "Free Size"
+                                            ].map(size => (
                                                 <button
                                                     key={size}
                                                     type="button"
@@ -492,101 +507,7 @@ const Products = () => {
                                             />
                                         </div>
                                     </div>
-
-                                    <div className="col-span-2 space-y-4">
-                                        <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest ml-1">Interactive Size Chart Builder</label>
-                                        
-                                        <div className="bg-background border-2 border-border rounded-[2rem] overflow-hidden shadow-inner">
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full border-collapse">
-                                                    <thead>
-                                                        <tr className="bg-muted/50 border-b border-border">
-                                                            {chartData.headers.map((header, hIdx) => (
-                                                                <th key={hIdx} className="p-4 relative group">
-                                                                    <input 
-                                                                        value={header} 
-                                                                        onChange={(e) => {
-                                                                            const newHeaders = [...chartData.headers];
-                                                                            newHeaders[hIdx] = e.target.value;
-                                                                            setChartData({ ...chartData, headers: newHeaders });
-                                                                        }}
-                                                                        className="w-full bg-transparent border-none outline-none text-center text-[10px] font-black uppercase tracking-widest text-primary focus:text-foreground"
-                                                                    />
-                                                                    {chartData.headers.length > 1 && (
-                                                                        <button 
-                                                                            type="button" 
-                                                                            onClick={() => {
-                                                                                const newHeaders = chartData.headers.filter((_, i) => i !== hIdx);
-                                                                                const newRows = chartData.rows.map(row => row.filter((_, i) => i !== hIdx));
-                                                                                setChartData({ headers: newHeaders, rows: newRows });
-                                                                            }}
-                                                                            className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all scale-75"
-                                                                        >
-                                                                            <X className="h-2 w-2" />
-                                                                        </button>
-                                                                    )}
-                                                                </th>
-                                                            ))}
-                                                            <th className="p-4 w-10">
-                                                                <button 
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setChartData({
-                                                                            headers: [...chartData.headers, "Header"],
-                                                                            rows: chartData.rows.map(row => [...row, ""])
-                                                                        });
-                                                                    }}
-                                                                    className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all"
-                                                                >
-                                                                    <Plus className="h-3 w-3" />
-                                                                </button>
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-border">
-                                                        {chartData.rows.map((row, rIdx) => (
-                                                            <tr key={rIdx} className="group/row">
-                                                                {row.map((cell, cIdx) => (
-                                                                    <td key={cIdx} className="p-3">
-                                                                        <input 
-                                                                            value={cell} 
-                                                                            onChange={(e) => {
-                                                                                const newRows = [...chartData.rows];
-                                                                                newRows[rIdx][cIdx] = e.target.value;
-                                                                                setChartData({ ...chartData, rows: newRows });
-                                                                            }}
-                                                                            className="w-full bg-transparent border-none outline-none text-center text-xs font-medium text-foreground transition-all focus:bg-primary/5 rounded-lg py-2"
-                                                                        />
-                                                                    </td>
-                                                                ))}
-                                                                <td className="p-3 text-center">
-                                                                    <button 
-                                                                        type="button" 
-                                                                        onClick={() => {
-                                                                            if (chartData.rows.length > 1) {
-                                                                                setChartData({ ...chartData, rows: chartData.rows.filter((_, i) => i !== rIdx) });
-                                                                            }
-                                                                        }}
-                                                                        className="p-2 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover/row:opacity-100 transition-all hover:bg-red-500 hover:text-white"
-                                                                    >
-                                                                        <Trash2 className="h-3 w-3" />
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <button 
-                                                type="button"
-                                                onClick={() => setChartData({ ...chartData, rows: [...chartData.rows, Array(chartData.headers.length).fill("")] })}
-                                                className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-accent hover:text-primary transition-all border-t border-border"
-                                            >
-                                                + Add New row
-                                            </button>
-                                        </div>
                                     </div>
-                                </div>
 
                                 <button
                                     disabled={upsertMutation.isPending}

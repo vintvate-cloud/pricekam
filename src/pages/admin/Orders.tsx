@@ -13,6 +13,7 @@ interface OrderItem {
     product: { title: string; image: string; price: number };
     quantity: number;
     price: number;
+    gst?: number | null;
     selectedSize?: string | null;
 }
 

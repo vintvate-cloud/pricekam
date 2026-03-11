@@ -15,6 +15,7 @@ import { API_URL } from '@/lib/api-config';
 interface Product {
   id: string;
   title: string;
+  gst: number;
   price: number;
   originalPrice?: number;
   image: string;
@@ -26,8 +27,6 @@ interface Product {
   badge?: string;
   description: string;
   sizes?: string[];
-  sizeChart?: string;
-  sizeChartData?: { headers: string[], rows: string[][] };
 }
 
 
@@ -42,7 +41,6 @@ const ProductPage = () => {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [isZoomed, setIsZoomed] = useState(false);
-  const [showSizeChart, setShowSizeChart] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -171,17 +169,7 @@ const ProductPage = () => {
 
             {product.sizes && product.sizes.length > 0 && (
               <div className="mb-10">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-display font-black tracking-widest text-foreground uppercase">CHOOSE SIZE</span>
-                  { (product.sizeChart || product.sizeChartData) && (
-                    <button 
-                      onClick={() => setShowSizeChart(true)}
-                      className="text-xs font-display font-black text-primary hover:underline transition-all"
-                    >
-                      VIEW SIZE CHART
-                    </button>
-                  )}
-                </div>
+                <span className="text-sm font-display font-black tracking-widest text-foreground uppercase block mb-4">CHOOSE SIZE</span>
                 <div className="flex flex-wrap gap-3">
                   {product.sizes.map((size) => (
                     <button
@@ -257,83 +245,7 @@ const ProductPage = () => {
         )}
       </main>
 
-      {/* Size Chart Modal */}
-      <AnimatePresence>
-        {showSizeChart && (product.sizeChart || product.sizeChartData) && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 md:p-6 z-[100]">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowSizeChart(false)}
-              className="absolute inset-0 bg-background/80 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-3xl bg-card rounded-[2.5rem] shadow-2xl p-6 md:p-10 border border-border"
-            >
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-3xl font-display font-black text-foreground tracking-tight">Size Guide ✨</h2>
-                  <p className="text-muted-foreground font-body text-sm font-medium italic">Find your perfect fit for maximum comfort.</p>
-                </div>
-                <button 
-                  onClick={() => setShowSizeChart(false)} 
-                  className="p-4 bg-accent rounded-2xl hover:bg-red-400/10 hover:text-red-400 transition-all"
-                >
-                  <Plus className="h-6 w-6 rotate-45" />
-                </button>
-              </div>
-              
-              <div className="rounded-[2rem] overflow-hidden bg-accent border-2 border-border shadow-inner">
-                {product.sizeChartData ? (
-                  <div className="overflow-x-auto p-1">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-primary shadow-sm">
-                          {product.sizeChartData.headers.map((header, i) => (
-                            <th key={i} className="p-4 text-left font-display font-black text-primary-foreground uppercase text-xs tracking-widest first:rounded-tl-2xl last:rounded-tr-2xl">{header}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {product.sizeChartData.rows.map((row, i) => (
-                          <tr key={i} className={`transition-colors ${i % 2 === 0 ? 'bg-background' : 'bg-muted/30'} hover:bg-primary/5`}>
-                            {row.map((cell, j) => (
-                              <td key={j} className={`p-4 font-body font-bold text-foreground border-b border-border/50 ${i === product.sizeChartData!.rows.length - 1 ? (j === 0 ? 'rounded-bl-2xl' : (j === row.length - 1 ? 'rounded-br-2xl' : '')) : ''}`}>{cell}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : product.sizeChart ? (
-                  <img 
-                    src={product.sizeChart} 
-                    alt="Size Chart" 
-                    className="w-full h-auto object-contain max-h-[60vh]"
-                  />
-                ) : (
-                  <div className="p-20 text-center">
-                    <p className="text-muted-foreground font-display font-bold">No size chart available for this treasure yet. 🧩</p>
-                  </div>
-                )}
-              </div>
 
-              <div className="mt-8 pt-8 border-t border-border flex justify-end">
-                <button 
-                  onClick={() => setShowSizeChart(false)}
-                  className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-display font-black hover:scale-105 transition-all shadow-xl shadow-primary/20"
-                >
-                  GOT IT, THANKS!
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <Footer />
     </div>
