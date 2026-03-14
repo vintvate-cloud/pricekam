@@ -23,6 +23,8 @@ interface Product {
     isFeatured: boolean;
     sizes: string[];
     gst: number;
+    videoLink?: string | null;
+    sizeChartData?: any;
 }
 
 interface Category {
@@ -359,6 +361,7 @@ const Products = () => {
                                     originalPrice: entries.originalPrice ? parseFloat(entries.originalPrice as string) : null,
                                     stock: parseInt(entries.stock as string) || 0,
                                     gst: parseFloat(entries.gst as string) || 0,
+                                    videoLink: entries.videoLink as string || null,
                                     isFeatured: formData.get("isFeatured") === "on",
                                     sizes: selectedSizes,
                                 };
@@ -510,6 +513,10 @@ const Products = () => {
                                     <div className="col-span-2">
                                         <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Story (Description)</label>
                                         <textarea name="description" required defaultValue={editingProduct?.description} rows={3} placeholder="Tell the magic about this toy..." className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-body font-medium text-foreground transition-all resize-none placeholder:text-muted-foreground/30" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-[10px] font-display font-black text-muted-foreground uppercase tracking-widest mb-2 ml-1">Product Video Link (YouTube/Instagram)</label>
+                                        <input name="videoLink" defaultValue={editingProduct?.videoLink || editingProduct?.sizeChartData?.videoLink || ""} type="url" placeholder="https://youtube.com/... or https://instagram.com/..." className="w-full px-6 py-4 rounded-2xl bg-background border-2 border-transparent focus:border-primary/20 outline-none font-display font-bold text-foreground transition-all placeholder:text-muted-foreground/30" />
                                     </div>
                                     <div className="col-span-2 flex items-center gap-4 bg-accent p-6 rounded-3xl border-2 border-dashed border-border">
                                         <div className="flex-1">

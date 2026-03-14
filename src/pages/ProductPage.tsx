@@ -27,6 +27,8 @@ interface Product {
   badge?: string;
   description: string;
   sizes?: string[];
+  videoLink?: string | null;
+  sizeChartData?: any;
 }
 
 
@@ -169,6 +171,17 @@ const ProductPage = () => {
             </div>
 
             <p className="text-muted-foreground font-body text-lg mb-8 leading-relaxed max-w-xl">{product.description}</p>
+
+            {(product.videoLink || product.sizeChartData?.videoLink) && (
+              <a 
+                href={product.videoLink || product.sizeChartData?.videoLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center gap-2 px-6 py-3 bg-red-500/10 text-red-600 border border-red-500/20 rounded-2xl font-display font-bold text-sm hover:bg-red-500 hover:text-white transition-all w-fit mb-8"
+              >
+                ▶️ Watch Product Video
+              </a>
+            )}
 
             {product.sizes && product.sizes.length > 0 && (
               <div className="mb-10">

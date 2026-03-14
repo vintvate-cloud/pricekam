@@ -7,7 +7,7 @@ import CartDrawer from "@/components/cart/CartDrawer";
 const values = [
   { icon: Heart, title: "Made with Love", desc: "Every product is curated with care for your little ones." },
   { icon: Shield, title: "Safe & Certified", desc: "All toys meet the highest safety standards and certifications." },
-  { icon: Truck, title: "Fast Delivery", desc: "Free shipping on orders above ₹499. Delivered in 3-5 days." },
+  { icon: Truck, title: "Fast Delivery", desc: "Free shipping on orders of ₹2000 and above. Delivery in 7-8 days." },
   { icon: Award, title: "Quality First", desc: "Premium quality products that last through years of play." },
 ];
 

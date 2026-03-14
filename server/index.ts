@@ -1207,7 +1207,7 @@ app.delete('/api/categories/:id', authenticateToken, authorizeRoles(['ADMIN']), 
 // --- ADMIN PRODUCT ACTIONS ---
 
 app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
-    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData, gst } = req.body;
+    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData, gst, videoLink } = req.body;
     try {
         const now = new Date().toISOString();
         const { data: product, error } = await db.from('Product').insert({
@@ -1228,11 +1228,27 @@ app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (r
             sizes: Array.isArray(sizes) ? sizes : [],
             sizeChart: sizeChart || null,
             sizeChartData: sizeChartData || null,
+            videoLink: videoLink || null,
             createdAt: now,
             updatedAt: now
         }).select().single();
 
         if (error) {
+            if (error.code === 'PGRST204' && error.message.includes('videoLink')) {
+                // Fallback: column doesn't exist yet, save it in sizeChartData jsonb
+                const fallbackChartData = sizeChartData || {};
+                const { data: fallbackProduct, error: fallbackError } = await db.from('Product').insert({
+                    id: crypto.randomUUID(),
+                    title, description, price: parseFloat(price), originalPrice: originalPrice ? parseFloat(originalPrice) : null, gst: parseFloat(gst) || 0,
+                    image, images: Array.isArray(images) ? images : [], categoryId, brand: brand || 'Generic', ageGroup: ageGroup || 'All',
+                    stock: parseInt(stock) || 0, isFeatured: !!isFeatured, rating: 0, sizes: Array.isArray(sizes) ? sizes : [],
+                    sizeChart: sizeChart || null, sizeChartData: { ...fallbackChartData, videoLink }, createdAt: now, updatedAt: now
+                }).select().single();
+                
+                if (fallbackError) throw fallbackError;
+                invalidateProductCache();
+                return res.status(201).json(fallbackProduct);
+            }
             console.error('Product Creation DB Error:', error);
             throw error;
         }
@@ -1245,7 +1261,7 @@ app.post('/api/products', authenticateToken, authorizeRoles(['ADMIN']), async (r
 });
 
 app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async (req, res) => {
-    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData, gst } = req.body;
+    const { title, description, price, originalPrice, image, images, categoryId, brand, ageGroup, stock, isFeatured, sizes, sizeChart, sizeChartData, gst, videoLink } = req.body;
     try {
         const { data: product, error } = await db.from('Product')
             .update({
@@ -1264,6 +1280,7 @@ app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async
                 sizes: Array.isArray(sizes) ? sizes : [],
                 sizeChart: sizeChart || null,
                 sizeChartData: sizeChartData || null,
+                videoLink: videoLink || null,
                 updatedAt: new Date().toISOString()
             })
             .eq('id', req.params.id)
@@ -1271,6 +1288,19 @@ app.put('/api/products/:id', authenticateToken, authorizeRoles(['ADMIN']), async
             .single();
 
         if (error) {
+             if (error.code === 'PGRST204' && error.message.includes('videoLink')) {
+                // Fallback: column doesn't exist yet, save it in sizeChartData jsonb
+                const fallbackChartData = sizeChartData || {};
+                const { data: fallbackProduct, error: fallbackError } = await db.from('Product').update({
+                    title, description, price: parseFloat(price), originalPrice: originalPrice ? parseFloat(originalPrice) : null, gst: parseFloat(gst) || 0,
+                    image, images: Array.isArray(images) ? images : [], categoryId, brand, ageGroup, stock: parseInt(stock) || 0, isFeatured: !!isFeatured,
+                    sizes: Array.isArray(sizes) ? sizes : [], sizeChart: sizeChart || null, sizeChartData: { ...fallbackChartData, videoLink }, updatedAt: new Date().toISOString()
+                }).eq('id', req.params.id).select().single();
+
+                if (fallbackError) throw fallbackError;
+                invalidateProductCache();
+                return res.json(fallbackProduct);
+            }
             console.error('Product Update DB Error:', error);
             throw error;
         }
