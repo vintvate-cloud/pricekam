@@ -7,24 +7,40 @@ const ShippingPage = () => (
     <Header />
     <CartDrawer />
     <main className="container mx-auto px-4 py-16 max-w-4xl">
-      <h1 className="text-4xl font-display font-bold mb-8">Shipping Information</h1>
+      <h1 className="text-4xl font-display font-bold mb-8">Shipping & Return Policy</h1>
       <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none space-y-6 text-muted-foreground font-body">
-        <p>We aim to deliver your magical treasures as quickly and safely as possible.</p>
         
-        <h2 className="text-xl font-display font-bold text-foreground">1. Shipping Rates</h2>
-        <p>We offer free shipping on all orders above ₹500. For orders below ₹500, a flat shipping fee may apply.</p>
+        <h2 className="text-xl font-display font-bold text-foreground">Shipping Information</h2>
+        <p className="font-semibold text-foreground">Free shipping on orders ₹2000 and above</p>
+        <p>Delivery takes 7-8 business days from the date of dispatch.</p>
 
-        <h2 className="text-xl font-display font-bold text-foreground">2. Delivery Time</h2>
-        <p>Orders are typically processed within 24-48 hours. Delivery usually takes 3-5 business days depending on your location.</p>
+        <h2 className="text-xl font-display font-bold text-foreground mt-8">Return Policy</h2>
+        <p className="font-bold text-destructive">Strict No Return, No Refund Policy</p>
+        
+        <h3 className="text-lg font-display font-bold text-foreground mt-6">Quality Assurance</h3>
+        <p>All products undergo rigorous double quality checks before dispatch. We stand by our commitment to excellence—defective items are not shipped.</p>
 
-        <h2 className="text-xl font-display font-bold text-foreground">3. Tracking Your Order</h2>
-        <p>Once your order is shipped, you will receive an email with the tracking information.</p>
+        <h3 className="text-lg font-display font-bold text-foreground mt-6">Exceptions (Extremely Rare)</h3>
+        <p>Exceptions are only considered with strict proof. To submit a claim:</p>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>Submit an uncut video (maximum 5 minutes) within 48 hours of delivery</li>
+          <li>Send via email to <a href="mailto:support@pricekam.com" className="text-primary hover:underline">support@pricekam.com</a> or through our portal</li>
+        </ul>
 
-        <h2 className="text-xl font-display font-bold text-foreground">4. International Shipping</h2>
-        <p>Currently, we only ship within India. We are looking forward to expanding our magic worldwide soon!</p>
+        <h3 className="text-lg font-display font-bold text-foreground mt-6">Video Requirements</h3>
+        <p>The video must clearly show:</p>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>Timestamped unboxing (from sealed package)</li>
+          <li>Live demonstration of the alleged issue (no edits, pauses, or fast-forwards)</li>
+          <li>Product serial number/QR code visible</li>
+        </ul>
 
-        <h2 className="text-xl font-display font-bold text-foreground">5. Shipping Partners</h2>
-        <p>We partner with leading courier services to ensure your products reach you in perfect condition.</p>
+        <h3 className="text-lg font-display font-bold text-foreground mt-6">Important Notes</h3>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>Incomplete or late submissions will be rejected</li>
+          <li>Approved cases may qualify for replacement only (shipping at your cost)</li>
+          <li className="font-bold text-destructive">No refunds under any circumstances</li>
+        </ul>
       </div>
     </main>
     <Footer />
