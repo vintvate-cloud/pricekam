@@ -32,26 +32,14 @@ const HeroSection = () => {
                         <span>Unwrap the Magic of Play</span>
                     </div>
 
-                    <h1 className="text-5xl md:text-7xl font-display font-bold text-foreground leading-[1.1] mb-6">
-                        Where Every <span className="text-[#3C83F6]">Toy</span> Tells a Story
+                    <h1 className="text-5xl md:text-6xl font-display font-bold text-foreground leading-[1.1] mb-6">
+                        Price Kam, <span className="text-[#3C83F6]">Khushi Jyada :)</span>, Quality ka Wada
                     </h1>
 
                     <p className="text-lg md:text-xl text-muted-foreground font-body mb-8 max-w-xl leading-relaxed">
                         Discover a world of wonder with our curated collection of toys that inspire creativity,
                         learning, and endless joy for children of all ages.
                     </p>
-
-                    <div className="flex flex-wrap gap-4 justify-center">
-                        <Button asChild size="lg" className="rounded-full px-8 py-6 text-lg font-bold bg-[#3C83F6] hover:bg-[#3C83F6]/90 text-white shadow-lg shadow-[#3C83F6]/25 transition-all hover:scale-105">
-                            <Link to="/shop">
-                                Shop All Toys
-                                <ArrowRight className="ml-2 h-5 w-5" />
-                            </Link>
-                        </Button>
-                        <Button variant="outline" size="lg" className="rounded-full px-8 py-6 text-lg font-bold border-2 border-[#3C83F6] text-[#3C83F6] hover:bg-[#3C83F6]/5 transition-all hover:scale-105">
-                            <Link to="/about">Our Story</Link>
-                        </Button>
-                    </div>
 
                     <div className="mt-12 flex items-center gap-6">
                         <div className="flex -space-x-4">
